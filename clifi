@@ -1,0 +1,101 @@
+#!/usr/bin/env -S python3 -B
+from subprocess import Popen, STDOUT
+from os import devnull, environ, remove, kill
+from os.path import exists
+from sys import stderr, argv
+from signal import SIGSTOP
+from argparse import ArgumentParser
+from json import load as json_load
+
+parser = ArgumentParser(description='lofi hip hop radio - beats to bash/zsh to')
+
+parser.add_argument('stream',
+                    help='stream name [lofi-main, lofi-chill]',
+                    type=str,
+                    nargs='?',
+                    default='default')
+parser.add_argument('--version',
+                    help='print program version',
+                    action='store_true')
+parser.add_argument('-v', '--verbose',
+                    help='be verbose', 
+                    action='store_true')
+parser.add_argument('-k', '--kill',
+                    help='kill an active session',
+                    action='store_true')
+parser.add_argument('--devel',
+                    help='for development use only, serves no purpose in regular releases',
+                    action='store_true')
+args = parser.parse_args()
+
+def v_print(type, output): # verbose printouts
+        if args.verbose:
+            if type == 's':
+                print("SUCCESS: {}".format(output))
+            if type == 'a':
+                print("ALERT: {}".format(output))
+            if type == 'e':
+                print("ERR: {}".format(output))
+            if type == 'f':
+                print("FAIL: {}".format(output))
+
+
+def main():
+
+    with open('streams.json') as f:
+        streams = json_load(f)
+
+    try: # Linux
+        open('/usr/bin/cvlc', 'r')
+        v_print('s', '/usr/bin/cvlc found!')
+
+        if args.stream == 'default':
+            args.stream = 'lofi-main'
+            v_print('a', "no stream entered...")
+            v_print('a', "starting default stream '{}' from {}".format(args.stream, streams[args.stream]))
+        else:
+            v_print('a', "starting stream '{}' from {}".format(args.stream, streams[args.stream]))
+        
+        Popen("cvlc -q --no-video {} &".format(streams[args.stream]), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+
+    except:
+        v_print('e', '/usr/bin/cvlc not found!')
+        try: # macOS
+            open('/Applications/VLC.app/Contents/MacOS/VLC', 'r')
+            Popen("/Applications/VLC.app/Contents/MacOS/VLC -I dummy -q --no-video https://www.youtube.com/watch?v=5qap5aO4i9A &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        except:
+            v_print('e', '/Applications/VLC.app/Contents/MacOS/VLC not found!')
+        v_print('f', 'no suitable execution candidates found')
+        exit("'vlc' needs to be installed on the system")
+
+    
+
+if __name__ == '__main__':
+
+    if args.version:
+        stderr.write('clifi 420.2 - this version is hella wavy\n')
+        stderr.flush()
+        exit(0)
+
+    if args.kill:
+        v_print('a', 'attempting to kill all vlc instances')
+        killall = Popen('killall vlc', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
+        killall.communicate()[0]
+        if killall.returncode != 0:
+            exit('no instances currently running...')
+        else:
+            v_print('s', 'killed running vlc instances')
+
+        try:
+            v_print('a', 'attempting to remove \'/tmp/clifi.lck\'')
+            remove('/tmp/clifi.lck')
+            exit(0)
+        except OSError:
+            exit('\'/tmp/clifi.lck\' not found...')
+
+    if exists('/tmp/clifi.lck'):
+        print('sorry, it looks like there\'s already an instance running...')
+        exit('if not, delete \'/tmp/clifi.lck\' and try again')
+    else:
+        open('/tmp/clifi.lck', 'w').close()
+        main()
