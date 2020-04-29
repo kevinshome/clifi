@@ -1,4 +1,15 @@
 {
-    "lofi-main":"https://www.youtube.com/watch?v=5qap5aO4i9A",
-    "lofi-chill":"https://www.youtube.com/watch?v=DWcJFNfaw9c"
+    "_description": "JSON file containing all streams to be used by clifi",
+    "streams": [
+        {
+            "name": "lofi-main",
+            "full-name": "lofi hip hop radio - beats to relax/study to",
+            "url": "https://www.youtube.com/watch?v=5qap5aO4i9A"
+        },
+        {
+            "name": "lofi-chill",
+            "full-name": "lofi hip hop radio - beats to sleep/chill to",
+            "url": "https://www.youtube.com/watch?v=DWcJFNfaw9c"
+        }
+    ]
 }

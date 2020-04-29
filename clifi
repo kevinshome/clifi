@@ -1,13 +1,13 @@
 #!/usr/bin/env -S python3 -B
 from subprocess import Popen, STDOUT
-from os import devnull, environ, remove, kill
+from os import devnull, remove
 from os.path import exists
-from sys import stderr, argv
-from signal import SIGSTOP
+from sys import stderr, platform
 from argparse import ArgumentParser
 from json import load as json_load
+from json import dump as json_dump
 
-parser = ArgumentParser(description='lofi hip hop radio - beats to bash/zsh to')
+parser = ArgumentParser(description='clifi: play your favorite streams straight from the command line')
 
 parser.add_argument('stream',
                     help='stream name [lofi-main, lofi-chill]',
@@ -23,9 +23,19 @@ parser.add_argument('-v', '--verbose',
 parser.add_argument('-k', '--kill',
                     help='kill an active session',
                     action='store_true')
+parser.add_argument('-n', '--new-stream',
+                    help='add a new stream to \'streams.json\'',
+                    action='store_true')
+parser.add_argument('--full-name',
+                    help='return full stream name',
+                    action='store_true')
+parser.add_argument('--url',
+                    help='return stream URL',
+                    action='store_true')
 parser.add_argument('--devel',
                     help='for development use only, serves no purpose in regular releases',
                     action='store_true')
+
 args = parser.parse_args()
 
 def v_print(type, output): # verbose printouts
@@ -39,11 +49,24 @@ def v_print(type, output): # verbose printouts
             if type == 'f':
                 print("FAIL: {}".format(output))
 
+def write_json(data): 
+        with open('streams.json','w') as f: 
+            json_dump(data, f, indent=4) 
+
 
 def main():
 
     with open('streams.json') as f:
         streams = json_load(f)
+
+    for i in range(len(streams['streams'])):
+        if args.stream == 'default':
+            stream_name = 'lofi-main'
+        else:
+            stream_name = args.stream
+
+        if streams['streams'][i]['name'] == stream_name:
+            stream_url = streams['streams'][i]['url']
 
     try: # Linux
         open('/usr/bin/cvlc', 'r')
@@ -52,11 +75,11 @@ def main():
         if args.stream == 'default':
             args.stream = 'lofi-main'
             v_print('a', "no stream entered...")
-            v_print('a', "starting default stream '{}' from {}".format(args.stream, streams[args.stream]))
+            v_print('a', "starting default stream '{}' from {}".format(args.stream, stream_url))
         else:
-            v_print('a', "starting stream '{}' from {}".format(args.stream, streams[args.stream]))
+            v_print('a', "starting stream '{}' from {}".format(args.stream, stream_url))
         
-        Popen("cvlc -q --no-video {} &".format(streams[args.stream]), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        Popen("cvlc -q --no-video {} &".format(stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
 
     except:
         v_print('e', '/usr/bin/cvlc not found!')
@@ -72,14 +95,65 @@ def main():
 
 if __name__ == '__main__':
 
+    if args.devel:
+        with open('streams.json') as f:
+            streams = json_load(f)
+        
+        for i in range(len(streams)):
+            if streams['streams'][i]['name'] == 'lofi-breeze':
+                print('ok')
+                exit(0)
+        exit(0)
+    
+    if args.full_name:
+        with open('streams.json') as f:
+            streams = json_load(f)
+        
+        for i in range(len(streams)):
+            if streams['streams'][i]['name'] == args.stream:
+                print('The full name for \'{}\' is \'{}\''.format(args.stream, streams['streams'][i]['full-name']))
+                exit(0)
+    
+    if args.url:
+        with open('streams.json') as f:
+            streams = json_load(f)
+        
+        for i in range(len(streams)):
+            if streams['streams'][i]['name'] == args.stream:
+                print('The URL for \'{}\' is \'{}\''.format(args.stream, streams['streams'][i]['url']))
+                exit(0)
+
+    if args.new_stream:
+        stream_name = input('Short name for stream (this is the name you\'ll use to launch the stream): ')
+        stream_full_name = input('Full name of stream (not required, will only be used when \'--full-name\' argument is called): ')
+        stream_url = input('Stream URL: ')
+
+        with open('streams.json') as f: 
+            data = json_load(f) 
+            inject = {"name":stream_name, "full-name":stream_full_name, "url":stream_url}
+            data['streams'].append(inject)
+        
+        try:
+            write_json(data)
+        except:
+            exit('failed to write data to \'streams.json\'')
+        
+        print('Successfully added {} to stream list!'.format(stream_name))
+        exit(0)
+
     if args.version:
-        stderr.write('clifi 420.2 - this version is hella wavy\n')
+        stderr.write('clifi 420.3 - this version is hella wavy\n')
         stderr.flush()
         exit(0)
 
     if args.kill:
         v_print('a', 'attempting to kill all vlc instances')
-        killall = Popen('killall vlc', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
+
+        if platform == 'linux':
+            killall = Popen('killall vlc', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
+        elif platform == 'darwin': # because macOS is lame and has to be different
+            killall = Popen('killall VLC', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
+
         killall.communicate()[0]
         if killall.returncode != 0:
             exit('no instances currently running...')
