@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+from subprocess import Popen, STDOUT
+from os import devnull, environ, remove, kill
+from os.path import exists
+from sys import stderr
+from argparse import ArgumentParser
+from signal import SIGSTOP
+
+parser = ArgumentParser(description='lofi hip hop radio - beats to bash/zsh to')
+parser.add_argument('-v', '--version',
+                    help='print program version',
+                    action='store_true')
+parser.add_argument('--verbose',
+                    help='be verbose', 
+                    action='store_true')
+parser.add_argument('-k', '--kill',
+                    help='kill an active session',
+                    action='store_true')
+parser.add_argument('--devel',
+                    help='for development use only, serves no purpose in production releases',
+                    action='store_true')
+args = parser.parse_args()
+
+def main():
+
+    def v_print(type, output): # verbose printouts
+        if args.verbose:
+            if type == 's':
+                print("SUCCESS: {}".format(output))
+            if type == 'a':
+                print("ALERT: {}".format(output))
+            if type == 'e':
+                print("ERR: {}".format(output))
+            if type == 'f':
+                print("FAIL: {}".format(output))
+
+    try: # Linux
+        open('/usr/bin/cvlc', 'r')
+        v_print('s', '/usr/bin/cvlc found!')
+        v_print('a', "starting stream from 'https://www.youtube.com/watch?v=5qap5aO4i9A' in the background")
+        subprocess = Popen("cvlc -q --no-video https://www.youtube.com/watch?v=5qap5aO4i9A &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+    except:
+        v_print('e', '/usr/bin/cvlc not found!')
+        try: # macOS
+            open('/Applications/VLC.app/Contents/MacOS/VLC', 'r')
+            subprocess = Popen("/Applications/VLC.app/Contents/MacOS/VLC -I dummy -q --no-video https://www.youtube.com/watch?v=5qap5aO4i9A &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        except:
+            v_print('e', '/Applications/VLC.app/Contents/MacOS/VLC not found!')
+        v_print('f', 'no suitable execution candidates found')
+        exit("'vlc' needs to be installed on the system")
+
+    
+
+if __name__ == '__main__':
+
+    if args.version:
+        stderr.write('lofi-cli 420.1 - this version is hella wavy\n')
+        stderr.flush()
+        exit(0)
+
+    if args.kill:
+        try:
+            Popen('killall vlc', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
+            remove('/tmp/lofi.lck')
+            exit(0)
+        except OSError:
+            exit('no session currently running')
+
+    if exists('/tmp/lofi.lck'):
+        print('sorry, it looks like there\'s already an instance running...')
+        exit('if not, delete \'/tmp/lofi.lck\' and try again')
+    else:
+        open('/tmp/lofi.lck', 'w').close()
+        main()
