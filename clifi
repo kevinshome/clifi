@@ -10,10 +10,13 @@ from json import dump as json_dump
 parser = ArgumentParser(description='clifi: play your favorite streams straight from the command line')
 
 parser.add_argument('stream',
-                    help='stream name [lofi-main, lofi-chill]',
+                    help='name of stream to be launched',
                     type=str,
                     nargs='?',
                     default='default')
+parser.add_argument('--streams',
+                    help='return list of streams',
+                    action='store_true')
 parser.add_argument('--version',
                     help='print program version',
                     action='store_true')
@@ -25,12 +28,6 @@ parser.add_argument('-k', '--kill',
                     action='store_true')
 parser.add_argument('-n', '--new-stream',
                     help='add a new stream to \'streams.json\'',
-                    action='store_true')
-parser.add_argument('--full-name',
-                    help='return full stream name',
-                    action='store_true')
-parser.add_argument('--url',
-                    help='return stream URL',
                     action='store_true')
 parser.add_argument('--devel',
                     help='for development use only, serves no purpose in regular releases',
@@ -95,33 +92,13 @@ def main():
 
 if __name__ == '__main__':
 
-    if args.devel:
+    if args.streams:
         with open('streams.json') as f:
             streams = json_load(f)
         
         for i in range(len(streams)):
-            if streams['streams'][i]['name'] == 'lofi-breeze':
-                print('ok')
-                exit(0)
+            print(streams['streams'][i]['name'] + ': \'' + streams['streams'][i]['full-name'] + '\' ({})'.format(streams['streams'][i]['url']))
         exit(0)
-    
-    if args.full_name:
-        with open('streams.json') as f:
-            streams = json_load(f)
-        
-        for i in range(len(streams)):
-            if streams['streams'][i]['name'] == args.stream:
-                print('The full name for \'{}\' is \'{}\''.format(args.stream, streams['streams'][i]['full-name']))
-                exit(0)
-    
-    if args.url:
-        with open('streams.json') as f:
-            streams = json_load(f)
-        
-        for i in range(len(streams)):
-            if streams['streams'][i]['name'] == args.stream:
-                print('The URL for \'{}\' is \'{}\''.format(args.stream, streams['streams'][i]['url']))
-                exit(0)
 
     if args.new_stream:
         stream_name = input('Short name for stream (this is the name you\'ll use to launch the stream): ')
