@@ -134,7 +134,7 @@ if __name__ == '__main__':
         with open(streamfile) as f:
             streams = json_load(f)
         
-        for i in range(len(streams)):
+        for i in range(len(streams['streams'])):
             print(streams['streams'][i]['name'] + ': \'' + streams['streams'][i]['full-name'] + '\' ({})'.format(streams['streams'][i]['url']))
         exit(0)
 
