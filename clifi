@@ -54,7 +54,7 @@ parser.add_argument('-n', '--new-stream',
 parser.add_argument('-s', '--switch',
                     help='switch from one stream to another',
                     action='store_true')
-parser.add_argument('--streams',
+parser.add_argument('-S', '--streams',
                     help='return list of streams',
                     action='store_true')
 parser.add_argument('--version',
@@ -92,28 +92,27 @@ def main(cfgdata, stream_name = args.stream):
         if streams['streams'][i]['name'] == stream_name:
             stream_url = streams['streams'][i]['url']
 
-    try: # Linux
-        open('/usr/bin/cvlc', 'r')
-        v_print('s', '/usr/bin/cvlc found!')
+    if 'linux' in platform:
+        vlc = '/usr/bin/vlc'
+    elif platform == 'darwin':
+        vlc = '/Applications/VLC.app/Contents/MacOS/VLC'
 
-        if stream_name == cfgdata['default_stream']:
-            v_print('a', "no stream entered...")
-            v_print('a', "starting default stream '{}' from {}".format(stream_name, stream_url))
-        else:
-            v_print('a', "starting stream '{}' from {}".format(stream_name, stream_url))
-        
-        s = Popen("cvlc -q --no-video {} &".format(stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
-
+    try:
+        open(vlc, 'r')
+        v_print('s', '{} found!'.format(vlc))
     except:
-        v_print('e', '/usr/bin/cvlc not found!')
-        try: # macOS
-            open('/Applications/VLC.app/Contents/MacOS/VLC', 'r')
-            s = Popen("/Applications/VLC.app/Contents/MacOS/VLC -I dummy -q --no-video {} &".format(stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
-        except:
-            v_print('e', '/Applications/VLC.app/Contents/MacOS/VLC not found!')
-            v_print('f', 'no suitable execution candidates found')
-            exit("'vlc' needs to be installed on the system")
-    
+        v_print('e', '{} not found...'.format(vlc))
+        v_print('f', 'failed to open VLC, please make sure it is installed properly and updated to the latest version')
+        exit(1)
+
+    if stream_name == cfgdata['default_stream']:
+        v_print('a', "no stream entered...")
+        v_print('a', "starting default stream '{}' from {}".format(stream_name, stream_url))
+    else:
+        v_print('a', "starting stream '{}' from {}".format(stream_name, stream_url))
+        
+    s = Popen("{} -I dummy -q --no-video {} &".format(vlc, stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+
     print('Running stream {} on PID {}'.format(stream_name, s.pid + 1))
     exit(0)
 
@@ -189,7 +188,7 @@ if __name__ == '__main__':
     if args.kill:
         v_print('a', 'attempting to kill all vlc instances')
 
-        if platform == 'linux' or platform == 'linux2':
+        if 'linux' in platform:
             killall = Popen('killall vlc', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
         elif platform == 'darwin': # because macOS is lame and has to be different
             killall = Popen('killall VLC', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
