@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S python3 -B
 
 # initial python version checker
 from sys import version_info
@@ -14,22 +14,8 @@ from os.path import exists
 from sys import stderr, platform
 from argparse import ArgumentParser
 from json import load as json_load
-from json import dump as json_dump
-
-def config_read(): # turns config data into dict
-    config = open('{}/.clifi/clifi.cfg'.format(getenv('HOME')), 'r')
-    data = {}
-    for line in config:
-        line = line.strip()
-        if '#' in line or line == '':
-            pass # ignore comments
-        else:
-            line = line.split('=')
-            setting = line[0]
-            value = line[1]
-
-            data[setting] = value
-    return data
+from clifi.utils import config_read, vprint, write_json
+from clifi.__init__ import __version__
 
 clifi_dir = '{}/.clifi/'.format(getenv('HOME'))
 cfgdata = config_read()
@@ -66,22 +52,6 @@ parser.add_argument('--devel',
 
 args = parser.parse_args()
 
-def v_print(type, output): # verbose printouts
-        if args.verbose:
-            if type == 's':
-                print("SUCCESS: {}".format(output))
-            if type == 'a':
-                print("ALERT: {}".format(output))
-            if type == 'e':
-                print("ERR: {}".format(output))
-            if type == 'f':
-                print("FAIL: {}".format(output))
-
-def write_json(data): 
-        with open(streamfile,'w') as f: 
-            json_dump(data, f, indent=4) 
-
-
 def main(cfgdata, stream_name = args.stream):
 
     with open(streamfile) as f:
@@ -99,17 +69,17 @@ def main(cfgdata, stream_name = args.stream):
 
     try:
         open(vlc, 'r')
-        v_print('s', '{} found!'.format(vlc))
+        vprint(args, 's', '{} found!'.format(vlc))
     except:
-        v_print('e', '{} not found...'.format(vlc))
-        v_print('f', 'failed to open VLC, please make sure it is installed properly and updated to the latest version')
+        vprint(args, 'e', '{} not found...'.format(vlc))
+        vprint(args, 'f', 'failed to open VLC, please make sure it is installed properly and updated to the latest version')
         exit(1)
 
     if stream_name == cfgdata['default_stream']:
-        v_print('a', "no stream entered...")
-        v_print('a', "starting default stream '{}' from {}".format(stream_name, stream_url))
+        vprint(args, 'a', "no stream entered...")
+        vprint(args, 'a', "starting default stream '{}' from {}".format(stream_name, stream_url))
     else:
-        v_print('a', "starting stream '{}' from {}".format(stream_name, stream_url))
+        vprint(args, 'a', "starting stream '{}' from {}".format(stream_name, stream_url))
         
     s = Popen("{} -I dummy -q --no-video {} &".format(vlc, stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
 
@@ -144,7 +114,7 @@ if __name__ == '__main__':
         }
 
         try:
-            write_json(default_json)
+            write_json(streamfile, default_json)
         except:
             exit('failed to write data to \'streams.json\'')
     
@@ -173,7 +143,7 @@ if __name__ == '__main__':
             data['streams'].append(inject)
         
         try:
-            write_json(data)
+            write_json(streamfile, data)
         except:
             exit('failed to write data to \'streams.json\'')
         
@@ -181,12 +151,12 @@ if __name__ == '__main__':
         exit(0)
 
     if args.version:
-        stderr.write('clifi 420.5 - this version is hella wavy\n')
+        stderr.write('clifi {} - this version is hella wavy\n'.format(__version__))
         stderr.flush()
         exit(0)
 
     if args.kill:
-        v_print('a', 'attempting to kill all vlc instances')
+        vprint(args, 'a', 'attempting to kill all vlc instances')
 
         if 'linux' in platform:
             killall = Popen('killall vlc', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
@@ -197,18 +167,18 @@ if __name__ == '__main__':
         if killall.returncode != 0:
             exit('no instances currently running...')
         else:
-            v_print('s', 'killed running vlc instances')
+            vprint(args, 's', 'killed running vlc instances')
 
         if not args.switch:
             try:
-                v_print('a', 'attempting to remove \'/tmp/clifi.lck\'')
+                vprint(args, 'a', 'attempting to remove \'/tmp/clifi.lck\'')
                 remove('/tmp/clifi.lck')
                 exit(0)
             except OSError:
                 exit('\'/tmp/clifi.lck\' not found...')
         
         if args.switch:
-            v_print('a', 'Launching new stream \'{}\''.format(args.stream))
+            vprint(args, 'a', 'Launching new stream \'{}\''.format(args.stream))
             main(cfgdata)
 
     if exists('/tmp/clifi.lck'):
