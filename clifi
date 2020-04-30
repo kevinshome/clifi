@@ -93,7 +93,7 @@ def main():
         v_print('e', '/usr/bin/cvlc not found!')
         try: # macOS
             open('/Applications/VLC.app/Contents/MacOS/VLC', 'r')
-            s = Popen("/Applications/VLC.app/Contents/MacOS/VLC -I dummy -q --no-video https://www.youtube.com/watch?v=5qap5aO4i9A &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+            s = Popen("/Applications/VLC.app/Contents/MacOS/VLC -I dummy -q --no-video {} &".format(stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
         except:
             v_print('e', '/Applications/VLC.app/Contents/MacOS/VLC not found!')
             v_print('f', 'no suitable execution candidates found')
