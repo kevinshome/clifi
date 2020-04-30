@@ -1,11 +1,22 @@
-#!/usr/bin/env -S python3 -B
+#!/usr/bin/env python3
+
+# initial python version checker
+from sys import version_info
+
+_pyminver = '3.2.6'
+_currentpyver = str('{0}.{1}.{2}'.format(version_info[0], version_info[1], version_info[2]))
+if _currentpyver < _pyminver:
+    exit('Sorry, the minimum supported python version is 3.2.6 :(')
+
 from subprocess import Popen, STDOUT
-from os import devnull, remove
+from os import devnull, remove, getuid, getenv, mkdir
 from os.path import exists
 from sys import stderr, platform
 from argparse import ArgumentParser
 from json import load as json_load
 from json import dump as json_dump
+
+streamfile = '{}/.clifi/streams.json'.format(getenv('HOME'))
 
 parser = ArgumentParser(description='clifi: play your favorite streams straight from the command line')
 
@@ -47,18 +58,18 @@ def v_print(type, output): # verbose printouts
                 print("FAIL: {}".format(output))
 
 def write_json(data): 
-        with open('streams.json','w') as f: 
+        with open(streamfile,'w') as f: 
             json_dump(data, f, indent=4) 
 
 
 def main():
 
-    with open('streams.json') as f:
+    with open(streamfile) as f:
         streams = json_load(f)
 
     for i in range(len(streams['streams'])):
         if args.stream == 'default':
-            stream_name = 'lofi-main'
+            stream_name = streams['streams'][0]['name']
         else:
             stream_name = args.stream
 
@@ -76,24 +87,51 @@ def main():
         else:
             v_print('a', "starting stream '{}' from {}".format(args.stream, stream_url))
         
-        Popen("cvlc -q --no-video {} &".format(stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        s = Popen("cvlc -q --no-video {} &".format(stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
 
     except:
         v_print('e', '/usr/bin/cvlc not found!')
         try: # macOS
             open('/Applications/VLC.app/Contents/MacOS/VLC', 'r')
-            Popen("/Applications/VLC.app/Contents/MacOS/VLC -I dummy -q --no-video https://www.youtube.com/watch?v=5qap5aO4i9A &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+            s = Popen("/Applications/VLC.app/Contents/MacOS/VLC -I dummy -q --no-video https://www.youtube.com/watch?v=5qap5aO4i9A &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
         except:
             v_print('e', '/Applications/VLC.app/Contents/MacOS/VLC not found!')
             v_print('f', 'no suitable execution candidates found')
             exit("'vlc' needs to be installed on the system")
+    
+    print('Running stream {} on PID {}'.format(args.stream, s.pid + 1))
 
     
 
 if __name__ == '__main__':
 
+    if not exists(streamfile):
+        
+        print('\'{}\' not found, creating it now...'.format(streamfile))
+        try:
+            mkdir('{}/.clifi'.format(getenv('HOME')))
+        except: # if $HOME/.clifi directory already exists, obviously we can't create it again, so just skip mkdir(), and touch the JSON file
+            pass
+        f = open(streamfile, 'w')
+
+        default_json = {
+            "_description":"JSON file containing all streams to be used by clifi",
+            "streams":[
+                {
+                    "name":"lofi",
+                    "full-name":"lofi hip hop radio - beats to relax/study to",
+                    "url":"https://www.youtube.com/watch?v=5qap5aO4i9A"
+                }
+            ]
+        }
+
+        try:
+            write_json(default_json)
+        except:
+            exit('failed to write data to \'streams.json\'')
+
     if args.streams:
-        with open('streams.json') as f:
+        with open(streamfile) as f:
             streams = json_load(f)
         
         for i in range(len(streams)):
@@ -105,7 +143,7 @@ if __name__ == '__main__':
         stream_full_name = input('Full name of stream (not required, will only be used when \'--full-name\' argument is called): ')
         stream_url = input('Stream URL: ')
 
-        with open('streams.json') as f: 
+        with open(streamfile) as f: 
             data = json_load(f) 
             inject = {"name":stream_name, "full-name":stream_full_name, "url":stream_url}
             data['streams'].append(inject)
@@ -119,14 +157,14 @@ if __name__ == '__main__':
         exit(0)
 
     if args.version:
-        stderr.write('clifi 420.3 - this version is hella wavy\n')
+        stderr.write('clifi 420.4 - this version is hella wavy\n')
         stderr.flush()
         exit(0)
 
     if args.kill:
         v_print('a', 'attempting to kill all vlc instances')
 
-        if platform == 'linux':
+        if platform == 'linux' or platform == 'linux2':
             killall = Popen('killall vlc', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
         elif platform == 'darwin': # because macOS is lame and has to be different
             killall = Popen('killall VLC', shell=True, stdout=open(devnull, 'w'), stderr=STDOUT)
