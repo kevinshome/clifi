@@ -16,7 +16,24 @@ from argparse import ArgumentParser
 from json import load as json_load
 from json import dump as json_dump
 
-streamfile = '{}/.clifi/streams.json'.format(getenv('HOME'))
+def config_read(): # turns config data into dict
+    config = open('{}/.clifi/clifi.cfg'.format(getenv('HOME')), 'r')
+    data = {}
+    for line in config:
+        line = line.strip()
+        if '#' in line or line == '':
+            pass # ignore comments
+        else:
+            line = line.split('=')
+            setting = line[0]
+            value = line[1]
+
+            data[setting] = value
+    return data
+
+clifi_dir = '{}/.clifi/'.format(getenv('HOME'))
+cfgdata = config_read()
+streamfile = clifi_dir + cfgdata['streamfile']
 
 parser = ArgumentParser(description='clifi: play your favorite streams straight from the command line')
 
@@ -24,13 +41,7 @@ parser.add_argument('stream',
                     help='name of stream to be launched',
                     type=str,
                     nargs='?',
-                    default='default')
-parser.add_argument('--streams',
-                    help='return list of streams',
-                    action='store_true')
-parser.add_argument('--version',
-                    help='print program version',
-                    action='store_true')
+                    default=cfgdata['default_stream'])
 parser.add_argument('-v', '--verbose',
                     help='be verbose', 
                     action='store_true')
@@ -39,6 +50,15 @@ parser.add_argument('-k', '--kill',
                     action='store_true')
 parser.add_argument('-n', '--new-stream',
                     help='add a new stream to \'streams.json\'',
+                    action='store_true')
+parser.add_argument('-s', '--switch',
+                    help='switch from one stream to another',
+                    action='store_true')
+parser.add_argument('--streams',
+                    help='return list of streams',
+                    action='store_true')
+parser.add_argument('--version',
+                    help='print program version',
                     action='store_true')
 parser.add_argument('--devel',
                     help='for development use only, serves no purpose in regular releases',
@@ -62,17 +82,13 @@ def write_json(data):
             json_dump(data, f, indent=4) 
 
 
-def main():
+def main(cfgdata, stream_name = args.stream):
 
     with open(streamfile) as f:
         streams = json_load(f)
 
     for i in range(len(streams['streams'])):
-        if args.stream == 'default':
-            stream_name = streams['streams'][0]['name']
-        else:
-            stream_name = args.stream
-
+        stream_name = stream_name
         if streams['streams'][i]['name'] == stream_name:
             stream_url = streams['streams'][i]['url']
 
@@ -80,12 +96,11 @@ def main():
         open('/usr/bin/cvlc', 'r')
         v_print('s', '/usr/bin/cvlc found!')
 
-        if args.stream == 'default':
-            args.stream = 'lofi-main'
+        if stream_name == cfgdata['default_stream']:
             v_print('a', "no stream entered...")
-            v_print('a', "starting default stream '{}' from {}".format(args.stream, stream_url))
+            v_print('a', "starting default stream '{}' from {}".format(stream_name, stream_url))
         else:
-            v_print('a', "starting stream '{}' from {}".format(args.stream, stream_url))
+            v_print('a', "starting stream '{}' from {}".format(stream_name, stream_url))
         
         s = Popen("cvlc -q --no-video {} &".format(stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
 
@@ -99,11 +114,15 @@ def main():
             v_print('f', 'no suitable execution candidates found')
             exit("'vlc' needs to be installed on the system")
     
-    print('Running stream {} on PID {}'.format(args.stream, s.pid + 1))
+    print('Running stream {} on PID {}'.format(stream_name, s.pid + 1))
+    exit(0)
 
     
 
 if __name__ == '__main__':
+
+    if args.devel:
+        pass
 
     if not exists(streamfile):
         
@@ -129,13 +148,19 @@ if __name__ == '__main__':
             write_json(default_json)
         except:
             exit('failed to write data to \'streams.json\'')
+    
+    if args.switch:
+        args.kill = True
 
     if args.streams:
         with open(streamfile) as f:
             streams = json_load(f)
         
         for i in range(len(streams['streams'])):
-            print(streams['streams'][i]['name'] + ': \'' + streams['streams'][i]['full-name'] + '\' ({})'.format(streams['streams'][i]['url']))
+            if streams['streams'][i]['name'] == cfgdata['default_stream']:
+                print('*' + streams['streams'][i]['name'] + ': \'' + streams['streams'][i]['full-name'] + '\' ({})'.format(streams['streams'][i]['url']))
+            else:
+                print(streams['streams'][i]['name'] + ': \'' + streams['streams'][i]['full-name'] + '\' ({})'.format(streams['streams'][i]['url']))
         exit(0)
 
     if args.new_stream:
@@ -157,7 +182,7 @@ if __name__ == '__main__':
         exit(0)
 
     if args.version:
-        stderr.write('clifi 420.4 - this version is hella wavy\n')
+        stderr.write('clifi 420.5 - this version is hella wavy\n')
         stderr.flush()
         exit(0)
 
@@ -175,16 +200,21 @@ if __name__ == '__main__':
         else:
             v_print('s', 'killed running vlc instances')
 
-        try:
-            v_print('a', 'attempting to remove \'/tmp/clifi.lck\'')
-            remove('/tmp/clifi.lck')
-            exit(0)
-        except OSError:
-            exit('\'/tmp/clifi.lck\' not found...')
+        if not args.switch:
+            try:
+                v_print('a', 'attempting to remove \'/tmp/clifi.lck\'')
+                remove('/tmp/clifi.lck')
+                exit(0)
+            except OSError:
+                exit('\'/tmp/clifi.lck\' not found...')
+        
+        if args.switch:
+            v_print('a', 'Launching new stream \'{}\''.format(args.stream))
+            main(cfgdata)
 
     if exists('/tmp/clifi.lck'):
         print('sorry, it looks like there\'s already an instance running...')
         exit('if not, delete \'/tmp/clifi.lck\' and try again')
     else:
         open('/tmp/clifi.lck', 'w').close()
-        main()
+        main(cfgdata)
