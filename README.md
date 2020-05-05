@@ -1,38 +1,4 @@
-<link href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,200;0,300;1,200&display=swap" rel="stylesheet">
-<style>
-.header {
-    font-family: 'Work Sans', sans-serif;
-    font-style: italic;
-    font-size: 48pt;
-    border-style: solid;
-    border-color: #b0c4de;
-    opacity: 0.5;
-    border-radius: 5px;
-    padding: 15px;
-}
-.sub-head{
-    font-family: 'Work Sans', sans-serif;
-    font-weight: bold;
-    font-weight: 300;
-    font-size: 16pt;
-}
-.line{
-    font-family: 'Work Sans', sans-serif;
-    color: black;
-    border-style: solid;
-    border-width: 0.75px;
-    opacity: 0.7;
-    margin-top: -5px;
-}
-.left-head{
-    font-size: 24pt;
-    font-weight: bold;
-}
-</style>
-<center>
-<font class="header">$> clifi</font><br><br>
-<font class="sub-head">play your favorite streams straight from the command line</font>
-<br><br>
+<img src=clifi.png>
 
 </center>
 
