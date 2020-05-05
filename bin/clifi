@@ -1,5 +1,13 @@
 #!/usr/bin/env -S python3 -B
 
+# clifi
+# play your favorite streams straight from the command line
+#
+# Copyright (c) 2020 kevinshome
+# This software is released under the terms of the MIT License, which can be found either in the LICENSE file in the root directory of this
+# source code, or if unavailable, can also be found at https://opensource.org/licenses/MIT
+
+
 # initial python version checker
 from sys import version_info
 
@@ -16,7 +24,7 @@ from argparse import ArgumentParser
 from time import sleep
 from json import load as json_load
 from clifi.utils import config_read, vprint, write_json
-from clifi.__init__ import __version__
+from clifi import __version__
 
 clifi_dir = '{}/.clifi/'.format(getenv('HOME'))
 

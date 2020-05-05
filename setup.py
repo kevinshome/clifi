@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="clifi",
-    version="420.5",
+    version="520.1",
     author="kevinshome",
     author_email="",
     description="",
