@@ -13,15 +13,47 @@ from os import devnull, remove, getuid, getenv, mkdir
 from os.path import exists
 from sys import stderr, platform
 from argparse import ArgumentParser
+from time import sleep
 from json import load as json_load
 from clifi.utils import config_read, vprint, write_json
 from clifi.__init__ import __version__
 
 clifi_dir = '{}/.clifi/'.format(getenv('HOME'))
-cfgdata = config_read()
-streamfile = clifi_dir + cfgdata['streamfile']
 
-parser = ArgumentParser(description='clifi: play your favorite streams straight from the command line')
+if exists(clifi_dir + 'clifi.cfg'):
+
+    cfgdata = config_read()
+    streamfile = clifi_dir + cfgdata['streamfile']
+
+else:
+
+    print('configuration file not found, creating it now...')
+    sleep(0.5)
+
+        
+    try:
+        mkdir('{}/.clifi'.format(getenv('HOME')))
+    except: # if $HOME/.clifi directory already exists, obviously we can't create it again, so just skip mkdir(), and touch the config file
+        pass
+
+    f = open(clifi_dir + 'clifi.cfg', 'w')
+
+    data = "# Configuration file for clifi\n\
+\n\
+streamfile=streams.json\n\
+default_stream=lofi\n"
+
+    f.write(data)
+    f.close()
+
+    cfgdata = config_read()
+    streamfile = clifi_dir + cfgdata['streamfile']
+
+        
+
+parser = ArgumentParser(prog='clifi',
+                        description='clifi: play your favorite streams straight from the command line',
+                        epilog='created with love in 2020 by kevinshome')
 
 parser.add_argument('stream',
                     help='name of stream to be launched',
@@ -37,12 +69,18 @@ parser.add_argument('-k', '--kill',
 parser.add_argument('-n', '--new-stream',
                     help='add a new stream to \'streams.json\'',
                     action='store_true')
+parser.add_argument('-rm', '--rm-stream',
+                    help='remove a stream from \'streams.json\'',
+                    action='store_true')
 parser.add_argument('-s', '--switch',
                     help='switch from one stream to another',
                     action='store_true')
 parser.add_argument('-S', '--streams',
                     help='return list of streams',
                     action='store_true')
+parser.add_argument('-U', '--url',
+                    type=str,
+                    help='stream directly from a URL, rather than an entry in your streamfile')
 parser.add_argument('--version',
                     help='print program version',
                     action='store_true')
@@ -52,15 +90,16 @@ parser.add_argument('--devel',
 
 args = parser.parse_args()
 
-def main(cfgdata, stream_name = args.stream):
+def main(cfgdata, stream_name=args.stream, url=False):
+    
+    if not url:
+        with open(streamfile) as f:
+            streams = json_load(f)
 
-    with open(streamfile) as f:
-        streams = json_load(f)
-
-    for i in range(len(streams['streams'])):
-        stream_name = stream_name
-        if streams['streams'][i]['name'] == stream_name:
-            stream_url = streams['streams'][i]['url']
+        for i in range(len(streams['streams'])):
+            stream_name = stream_name
+            if streams['streams'][i]['name'] == stream_name:
+                stream_url = streams['streams'][i]['url']
 
     if 'linux' in platform:
         vlc = '/usr/bin/vlc'
@@ -75,12 +114,21 @@ def main(cfgdata, stream_name = args.stream):
         vprint(args, 'f', 'failed to open VLC, please make sure it is installed properly and updated to the latest version')
         exit(1)
 
+    if url:
+        stream_url = args.url
+        s = Popen("{} -I dummy -q --no-video {} &".format(vlc, stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        print('Running stream from the URL \'{}\' on PID {}'.format(stream_url, s.pid + 1))
+        exit(0)
+
     if stream_name == cfgdata['default_stream']:
         vprint(args, 'a', "no stream entered...")
         vprint(args, 'a', "starting default stream '{}' from {}".format(stream_name, stream_url))
     else:
-        vprint(args, 'a', "starting stream '{}' from {}".format(stream_name, stream_url))
-        
+        try:
+            vprint(args, 'a', "starting stream '{}' from {}".format(stream_name, stream_url))
+        except UnboundLocalError:
+            exit(1)
+
     s = Popen("{} -I dummy -q --no-video {} &".format(vlc, stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
 
     print('Running stream {} on PID {}'.format(stream_name, s.pid + 1))
@@ -96,10 +144,13 @@ if __name__ == '__main__':
     if not exists(streamfile):
         
         print('\'{}\' not found, creating it now...'.format(streamfile))
+        sleep(0.5)
+
         try:
             mkdir('{}/.clifi'.format(getenv('HOME')))
         except: # if $HOME/.clifi directory already exists, obviously we can't create it again, so just skip mkdir(), and touch the JSON file
             pass
+
         f = open(streamfile, 'w')
 
         default_json = {
@@ -117,7 +168,32 @@ if __name__ == '__main__':
             write_json(streamfile, default_json)
         except:
             exit('failed to write data to \'streams.json\'')
+        
+        f.close()
     
+    if args.rm_stream:
+        with open(streamfile) as f:
+            data = json_load(f)
+        
+        for i in range(len(data['streams'])):
+            if data['streams'][i]['name'] == args.stream:
+                del data['streams'][i]
+
+        
+        try:
+            write_json(streamfile, data)
+        except:
+            exit('failed to write data to \'streams.json\'')
+
+        f.close()
+        exit(0)    
+                
+    if args.url:
+        open('/tmp/clifi.lck', 'w').close()
+        main(cfgdata, url=True)
+
+
+
     if args.switch:
         args.kill = True
 
