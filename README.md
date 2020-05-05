@@ -1,8 +1,8 @@
-<center>
+<p align="center">
 
 <img src=clifi.png>
 
-</center>
+</p>
 
 ## Index
 - [Installing and Using clifi](#Installation)
