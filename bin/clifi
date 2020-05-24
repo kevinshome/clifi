@@ -4,7 +4,8 @@
 # play your favorite streams straight from the command line
 #
 # Copyright (c) 2020 kevinshome
-# This software is released under the terms of the MIT License, which can be found either in the LICENSE file in the root directory of this
+# This software is released under the terms of the MIT License, 
+# which can be found either in the LICENSE file in the root directory of this
 # source code, or if unavailable, can also be found at https://opensource.org/licenses/MIT
 
 
@@ -27,6 +28,16 @@ from clifi.utils import config_read, vprint, write_json
 from clifi import __version__
 
 clifi_dir = '{}/.clifi/'.format(getenv('HOME'))
+
+def clifi_exit(exit_code):
+    if exists('/tmp/clifi.lck'):
+        try:
+            vprint(args, 'a', 'attempting to remove \'/tmp/clifi.lck\'')
+            remove('/tmp/clifi.lck')
+            clifi_exit(0)
+        except OSError:
+            clifi_exit('\'/tmp/clifi.lck\' not found...')
+    exit(exit_code)
 
 if exists(clifi_dir + 'clifi.cfg'):
 
@@ -119,14 +130,14 @@ def main(cfgdata, stream_name=args.stream, url=False):
         vprint(args, 's', '{} found!'.format(vlc))
     except:
         vprint(args, 'e', '{} not found...'.format(vlc))
-        vprint(args, 'f', 'failed to open VLC, please make sure it is installed properly and updated to the latest version')
-        exit(1)
+        print('failed to open VLC, please make sure it is installed properly and updated to the latest version')
+        clifi_exit(1)
 
     if url:
         stream_url = args.url
         s = Popen("{} -I dummy -q --no-video {} &".format(vlc, stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
         print('Running stream from the URL \'{}\' on PID {}'.format(stream_url, s.pid + 1))
-        exit(0)
+        clifi_exit(0)
 
     if stream_name == cfgdata['default_stream']:
         vprint(args, 'a', "no stream entered...")
@@ -135,12 +146,12 @@ def main(cfgdata, stream_name=args.stream, url=False):
         try:
             vprint(args, 'a', "starting stream '{}' from {}".format(stream_name, stream_url))
         except UnboundLocalError:
-            exit(1)
+            clifi_exit(1)
 
     s = Popen("{} -I dummy -q --no-video {} &".format(vlc, stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
 
     print('Running stream {} on PID {}'.format(stream_name, s.pid + 1))
-    exit(0)
+    clifi_exit(0)
 
     
 
@@ -175,7 +186,7 @@ if __name__ == '__main__':
         try:
             write_json(streamfile, default_json)
         except:
-            exit('failed to write data to \'streams.json\'')
+            clifi_exit('failed to write data to \'streams.json\'')
         
         f.close()
     
@@ -191,10 +202,10 @@ if __name__ == '__main__':
         try:
             write_json(streamfile, data)
         except:
-            exit('failed to write data to \'streams.json\'')
+            clifi_exit('failed to write data to \'streams.json\'')
 
         f.close()
-        exit(0)    
+        clifi_exit(0)    
                 
     if args.url:
         open('/tmp/clifi.lck', 'w').close()
@@ -214,7 +225,7 @@ if __name__ == '__main__':
                 print('*' + streams['streams'][i]['name'] + ': \'' + streams['streams'][i]['full-name'] + '\' ({})'.format(streams['streams'][i]['url']))
             else:
                 print(streams['streams'][i]['name'] + ': \'' + streams['streams'][i]['full-name'] + '\' ({})'.format(streams['streams'][i]['url']))
-        exit(0)
+        clifi_exit(0)
 
     if args.new_stream:
         stream_name = input('Short name for stream (this is the name you\'ll use to launch the stream): ')
@@ -229,15 +240,15 @@ if __name__ == '__main__':
         try:
             write_json(streamfile, data)
         except:
-            exit('failed to write data to \'streams.json\'')
+            clifi_exit('failed to write data to \'streams.json\'')
         
         print('Successfully added {} to stream list!'.format(stream_name))
-        exit(0)
+        clifi_exit(0)
 
     if args.version:
         stderr.write('clifi {} - this version is hella wavy\n'.format(__version__))
         stderr.flush()
-        exit(0)
+        clifi_exit(0)
 
     if args.kill:
         vprint(args, 'a', 'attempting to kill all vlc instances')
@@ -249,17 +260,12 @@ if __name__ == '__main__':
 
         killall.communicate()[0]
         if killall.returncode != 0:
-            exit('no instances currently running...')
+            clifi_exit('no instances currently running...')
         else:
             vprint(args, 's', 'killed running vlc instances')
 
         if not args.switch:
-            try:
-                vprint(args, 'a', 'attempting to remove \'/tmp/clifi.lck\'')
-                remove('/tmp/clifi.lck')
-                exit(0)
-            except OSError:
-                exit('\'/tmp/clifi.lck\' not found...')
+            clifi_exit(0)
         
         if args.switch:
             vprint(args, 'a', 'Launching new stream \'{}\''.format(args.stream))
@@ -267,7 +273,7 @@ if __name__ == '__main__':
 
     if exists('/tmp/clifi.lck'):
         print('sorry, it looks like there\'s already an instance running...')
-        exit('if not, delete \'/tmp/clifi.lck\' and try again')
+        clifi_exit('if not, delete \'/tmp/clifi.lck\' and try again')
     else:
         open('/tmp/clifi.lck', 'w').close()
         main(cfgdata)
