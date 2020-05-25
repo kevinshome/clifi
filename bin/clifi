@@ -34,9 +34,9 @@ def clifi_exit(exit_code):
         try:
             vprint(args, 'a', 'attempting to remove \'/tmp/clifi.lck\'')
             remove('/tmp/clifi.lck')
-            clifi_exit(0)
+            exit(0)
         except OSError:
-            clifi_exit('\'/tmp/clifi.lck\' not found...')
+            exit('\'/tmp/clifi.lck\' not found...')
     exit(exit_code)
 
 if exists(clifi_dir + 'clifi.cfg'):
@@ -137,7 +137,7 @@ def main(cfgdata, stream_name=args.stream, url=False):
         stream_url = args.url
         s = Popen("{} -I dummy -q --no-video {} &".format(vlc, stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
         print('Running stream from the URL \'{}\' on PID {}'.format(stream_url, s.pid + 1))
-        clifi_exit(0)
+        exit(0)
 
     if stream_name == cfgdata['default_stream']:
         vprint(args, 'a', "no stream entered...")
@@ -151,7 +151,7 @@ def main(cfgdata, stream_name=args.stream, url=False):
     s = Popen("{} -I dummy -q --no-video {} &".format(vlc, stream_url), shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
 
     print('Running stream {} on PID {}'.format(stream_name, s.pid + 1))
-    clifi_exit(0)
+    exit(0)
 
     
 
@@ -273,7 +273,7 @@ if __name__ == '__main__':
 
     if exists('/tmp/clifi.lck'):
         print('sorry, it looks like there\'s already an instance running...')
-        clifi_exit('if not, delete \'/tmp/clifi.lck\' and try again')
+        exit('if not, delete \'/tmp/clifi.lck\' and try again')
     else:
         open('/tmp/clifi.lck', 'w').close()
         main(cfgdata)
