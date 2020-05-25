@@ -27,6 +27,8 @@ from json import load as json_load
 from clifi.utils import config_read, vprint, write_json
 from clifi import __version__
 
+import shutil
+
 clifi_dir = '{}/.clifi/'.format(getenv('HOME'))
 
 def clifi_exit(exit_code):
@@ -51,11 +53,13 @@ else:
 
         
     try:
-        mkdir('{}/.clifi'.format(getenv('HOME')))
+        mkdir(clifi_dir)
     except: # if $HOME/.clifi directory already exists, obviously we can't create it again, so just skip mkdir(), and touch the config file
         pass
 
-    f = open(clifi_dir + 'clifi.cfg', 'w')
+    shutil.copy('/etc/default/clifi/clifi.cfg', clifi_dir)
+
+    '''f = open(clifi_dir + 'clifi.cfg', 'w')
 
     data = "# Configuration file for clifi\n\
 \n\
@@ -63,7 +67,7 @@ streamfile=streams.json\n\
 default_stream=lofi\n"
 
     f.write(data)
-    f.close()
+    f.close()''' # deprecated
 
     cfgdata = config_read()
     streamfile = clifi_dir + cfgdata['streamfile']
@@ -161,7 +165,7 @@ def main(cfgdata, stream_name=args.stream, url=False):
 if __name__ == '__main__':
 
     if args.devel:
-        pass
+        exit(0)
 
     if not exists(streamfile):
         
@@ -172,7 +176,10 @@ if __name__ == '__main__':
             mkdir('{}/.clifi'.format(getenv('HOME')))
         except: # if $HOME/.clifi directory already exists, obviously we can't create it again, so just skip mkdir(), and touch the JSON file
             pass
+        
+        shutil.copy('/etc/default/clifi/streams.json', clifi_dir)
 
+        '''
         f = open(streamfile, 'w')
 
         default_json = {
@@ -192,10 +199,11 @@ if __name__ == '__main__':
             clifi_exit('failed to write data to \'streams.json\'')
         
         f.close()
-    
+        ''' # deprecated
+
     if args.start_stream:
-        s = Popen("/usr/bin/vlc -I dummy -q --no-video " + args.start_stream + " --sout '#standard{access=http,mux=ogg,dst=0.0.0.0:8080}' &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
-        print('Streaming {} at http://localhost:8080 on PID {}'.format(args.start_stream, s.pid + 1))
+        s = Popen("/usr/bin/vlc -I dummy -q --no-video " + args.start_stream + " --sout '#standard{access=" + cfgdata['local_stream_protocol'] + ",mux=" + cfgdata['local_stream_profile'] + ",dst=" + cfgdata['local_stream_host'] + ':' + cfgdata['local_stream_port'] + "}' &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        print('Streaming {} at {}://{}:{} on PID {}'.format(args.start_stream, cfgdata['local_stream_protocol'], cfgdata['local_stream_host'], cfgdata['local_stream_port'], s.pid + 1))
         exit(0)
 
     if args.rm_stream:
