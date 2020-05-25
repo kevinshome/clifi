@@ -100,6 +100,9 @@ parser.add_argument('-S', '--streams',
 parser.add_argument('-U', '--url',
                     type=str,
                     help='stream directly from a URL, rather than an entry in your streamfile')
+parser.add_argument('-SS', '--start-stream',
+                    type=str,
+                    help='start a stream')
 parser.add_argument('--version',
                     help='print program version',
                     action='store_true')
@@ -190,6 +193,11 @@ if __name__ == '__main__':
         
         f.close()
     
+    if args.start_stream:
+        s = Popen("/usr/bin/vlc -I dummy -q --no-video " + args.start_stream + " --sout '#standard{access=http,mux=ogg,dst=0.0.0.0:8080}' &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        print('Streaming {} at http://localhost:8080 on PID {}'.format(args.start_stream, s.pid + 1))
+        exit(0)
+
     if args.rm_stream:
         with open(streamfile) as f:
             data = json_load(f)

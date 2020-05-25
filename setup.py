@@ -17,7 +17,7 @@ class PostInstall(install):
 
 setuptools.setup(
     name="clifi",
-    version="520.2",
+    version="520.3a1",
     author="kevinshome",
     description="play your favorite streams straight from the command line",
     url="https://github.com/kevinshome/clifi",
