@@ -1,6 +1,7 @@
 # directories
 dist
 build
+purify
 
 # files
 *.own
