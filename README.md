@@ -9,6 +9,9 @@
 
 </p>
 
+# NOTICE (as of June 03, 2020)
+This is not complete, the entire codebase for "classic" clifi is being rewritten from Python to C++. Expect errors, expect not all "classic" clifi features to function as expected, and definitely expect some sloppy code. Thank you, and enjoy.
+
 ## Index
 - [Installing and Using clifi](#Installation)
     - [Installation](#Installation)
@@ -21,11 +24,8 @@
 - [Issues and Bugs](#Issues-and-bugs)
 
 ## Installation
-Installing clifi is fast and easy, just enter the following command on your machine's terminal:
 
-```
-$ pip3 install git+https://github.com/kevinshome/clifi
-```
+TBW
 
 ## Configuration
 Clifi has two main configuration files:
