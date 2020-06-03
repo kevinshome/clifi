@@ -7,9 +7,10 @@
 
 from os import getenv
 from json import dump as json_dump
+from pathlib import Path
 
 def config_read(): # turns config data into dict
-    config = open('{}/.clifi/clifi.cfg'.format(getenv('HOME')), 'r')
+    config = open('{}/.clifi/clifi.cfg'.format(str(Path.home())), 'r')
     data = {}
     for line in config:
         line = line.strip()

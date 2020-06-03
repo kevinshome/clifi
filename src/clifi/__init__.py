@@ -7,4 +7,4 @@
 
 __name__ = 'clifi'
 __license__ = 'MIT'
-__version__ = '520.3'
+__version__ = '620.1'
