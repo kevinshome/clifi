@@ -32,16 +32,25 @@ from clifi import __version__
 
 import shutil
 
+if 'linux' in platform:
+    vlc = '/usr/bin/vlc'
+elif platform == 'darwin':
+    vlc = '/Applications/VLC.app/Contents/MacOS/VLC'
+elif platform == 'win32':
+    vlc = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe"
+
 if platform == 'win32':
     clifi_dir = '{}\.clifi\\'.format(str(Path.home()))
+    lockfile = clifi_dir + 'clifi.lck'
 else:
     clifi_dir = '{}/.clifi/'.format(str(Path.home()))
+    lockfile = '/tmp/clifi.lck'
 
 def clifi_exit(exit_code):
-    if exists('/tmp/clifi.lck'):
+    if exists(lockfile):
         try:
             vprint(args, 'a', 'attempting to remove \'/tmp/clifi.lck\'')
-            remove('/tmp/clifi.lck')
+            remove(lockfile)
             exit(0)
         except OSError:
             exit('\'/tmp/clifi.lck\' not found...')
@@ -136,11 +145,6 @@ def main(cfgdata, stream_name=args.stream, url=False):
             if streams['streams'][i]['name'] == stream_name:
                 stream_url = streams['streams'][i]['url']
 
-    if 'linux' in platform:
-        vlc = '/usr/bin/vlc'
-    elif platform == 'darwin':
-        vlc = '/Applications/VLC.app/Contents/MacOS/VLC'
-
     try:
         open(vlc, 'r')
         vprint(args, 's', '{} found!'.format(vlc))
@@ -214,7 +218,9 @@ if __name__ == '__main__':
         ''' # deprecated
 
     if args.start_stream:
-        s = Popen("/usr/bin/vlc -I dummy -q --no-video " + args.start_stream + " --sout '#standard{access=" + cfgdata['local_stream_protocol'] + ",mux=" + cfgdata['local_stream_profile'] + ",dst=" + cfgdata['local_stream_host'] + ':' + cfgdata['local_stream_port'] + "}' &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        s = Popen("C:\\Program Files\\VideoLAN\\VLC\\vlc.exe -I dummy -q --no-video 'C:\\Users\\noaht\\Desktop\\technical difficulties' --sout '#transcode{vcodec=none,acodec=mp3,ab=128,channels=2,samplerate=44100,scodec=none}:http{mux=mp3,dst=:8080/}' &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        #s = Popen(vlc + " -I dummy -q --no-video " + args.start_stream + " --sout '#transcode{vcodec=none,acodec=mp3,ab=128,channels=2,samplerate=44100,scodec=none}:http{mux=mp3,dst=:8080/}' &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
+        #s = Popen(vlc + " -I dummy -q --no-video " + args.start_stream + " --sout '#standard{access=" + cfgdata['local_stream_protocol'] + ",mux=" + cfgdata['local_stream_profile'] + ",dst=" + cfgdata['local_stream_host'] + ':' + cfgdata['local_stream_port'] + "}' &", shell=True, stdout=open(devnull, 'w'), stderr=STDOUT) # run vlc quietly in the background
         print('Streaming {} at {}://{}:{} on PID {}'.format(args.start_stream, cfgdata['local_stream_protocol'], cfgdata['local_stream_host'], cfgdata['local_stream_port'], s.pid + 1))
         exit(0)
 
@@ -236,7 +242,7 @@ if __name__ == '__main__':
         clifi_exit(0)    
                 
     if args.url:
-        open('/tmp/clifi.lck', 'w').close()
+        open(lockfile, 'w').close()
         main(cfgdata, url=True)
 
 
@@ -301,9 +307,9 @@ if __name__ == '__main__':
             vprint(args, 'a', 'Launching new stream \'{}\''.format(args.stream))
             main(cfgdata)
 
-    if exists('/tmp/clifi.lck'):
+    if exists(lockfile):
         print('sorry, it looks like there\'s already an instance running...')
         exit('if not, delete \'/tmp/clifi.lck\' and try again')
     else:
-        open('/tmp/clifi.lck', 'w').close()
+        open(lockfile, 'w').close()
         main(cfgdata)
