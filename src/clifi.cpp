@@ -1,48 +1,37 @@
 #include <Clifi.hpp>
-#include <argparse.hpp>
+#include <parser.hpp>
 #include <subprocess.hpp>
+#include <json.hpp>
+#include <list>
 
-using namespace std;
-
-bool verbose = false;
+using namespace nlohmann;
 
 int main(int argc, char **argv){
-    argparse::ArgumentParser parser(__NAME);
 
-    parser.add_argument("--version")
-        .help("display version and exit")
-        .default_value(false)
-        .implicit_value(true);
+    string homedir = getenv("HOME");
+    string clifi_dir = "/.clifi";
+    string stream_url;
+    clifi_dir = homedir + clifi_dir;
 
-    parser.add_argument("-v", "--verbose")
-        .help("be verbose")
-        .default_value(false)
-        .implicit_value(true);
-    
-    parser.add_argument("stream")
-        .help("name of stream to be launched")
-        .action([](const std::string& value) { return value; });
+    parser_init(argc, argv);
 
-    try {
-      parser.parse_args(argc, argv);
-    }
-    catch (const std::runtime_error& err) {
-      std::cout << err.what() << std::endl;
-      std::cout << parser;
-      exit(0);
+    ifstream input(clifi_dir + "/streams.json");
+    json streams;
+    input >> streams;
+
+    for (long unsigned int i = 0; i < streams["streams"].size(); i++)
+    {
+        if(streams["streams"][i]["name"] == stream_name){
+            stream_url = streams["streams"][i]["url"];
+        }
     }
 
-    if(parser["--verbose"] == true){
-        verbose = true;
+    /*
+    for( std::string line; getline( input, line ); ){
+        int x;
     }
-
-    if(parser["--version"] == true){
-        string _version = __VERSION;
-        cout << "clifi C++ rewrite pre-alpha " + _version + "\n";
-        exit(0);
-    }
-
-    subprocess::popen cmd("vlc", {"-I", "dummy", "-q", "--no-video", "https://www.youtube.com/watch?v=5qap5aO4i9A"});
+    */
+    subprocess::popen cmd("vlc", {"-vvv", "-I", "dummy", "-q", "--no-video", stream_url});
 
     return 0;
 }
