@@ -9,6 +9,12 @@
 
 </p>
 
+# NOTICE
+
+## THIS VERSION OF CLIFI IS DEPRECATED AS OF JUNE 2020. A RUST REWRITE IS CURRENTLY IN THE WORKS IN THE RUSTRW BRANCH, AND SHOULD BE READY AS A REPLACEMENT SOON.
+
+<br> <hr>
+
 ## Index
 - [Installing and Using clifi](#Installation)
     - [Installation](#Installation)
