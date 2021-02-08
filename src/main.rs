@@ -1,13 +1,12 @@
 use std::{env, process};
-use subprocess::{Popen, PopenConfig};
+use subprocess::{Popen, PopenConfig, Redirection};
 use clap::{Arg, App};
 
 fn main() -> std::io::Result<()> {
 
     let matches = App::new("clifi")
                           .version("221.1.0")
-                          .author("kevinshome <noah.tanner7@gmail.com>")
-                          .about("vlc condom")
+                          .about("play your favorite streams straight from the command line")
                           .arg(Arg::with_name("kill")
                                .short("k")
                                .long("kill")
@@ -19,7 +18,10 @@ fn main() -> std::io::Result<()> {
     let mut clifi_dir: String = "".to_string();
 
     if matches.is_present("kill"){
-        Popen::create(&["killall", "VLC"], PopenConfig::default());
+        process::Command::new("killall")
+            .args(&["VLC"])
+            .output()
+            .expect("error while attempting to kill VLC instances. if error persists, try manually.");
         process::exit(0);
     }
 
@@ -40,10 +42,16 @@ fn main() -> std::io::Result<()> {
     println!("CLIFI_DIR = {}", clifi_dir);
     println!("VLC = {}", vlc_path);
 
-    match Popen::create(&[vlc_path, "-I", "dummy", "-q", "--no-video", "https://www.youtube.com/watch?v=5qap5aO4i9A", "&"], PopenConfig::default()) {
-        Ok(mut popen) => Popen::detach(&mut popen),
-        Err(error) => panic!("Problem opening the file: {:?}", error),
+    match Popen::create(&[vlc_path, "-I", "dummy", "-q", "--no-video", "https://www.youtube.com/watch?v=5qap5aO4i9A"], PopenConfig {
+        stdout: Redirection::Pipe,
+        stderr: Redirection::Pipe,
+        detached: true,
+        ..Default::default()
+    }) {
+        Ok(_) => (),
+        Err(error) => panic!("error opening stream: {:?}", error),
     };
+
 
 
     Ok(())
