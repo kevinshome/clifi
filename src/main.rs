@@ -4,6 +4,7 @@ use clap::{Arg, App};
 
 fn main() -> std::io::Result<()> {
 
+    // CLAP DEFINITIONS
     let matches = App::new("clifi")
                           .version("221.1.0")
                           .about("play your favorite streams straight from the command line")
@@ -23,18 +24,21 @@ fn main() -> std::io::Result<()> {
                                .takes_value(false))
                           .get_matches();
 
+
+    // DEFINE VARIABLES FOR LATER
     let stream_name = matches.value_of("stream").unwrap();                    
     let mut vlc_path = "";
     let mut stream_url: String = "".to_string();
     let mut clifi_dir: String = "".to_string();
 
-
+    // DEFINE CLIFI DIRECTORY
     if cfg!(win32){ // NEEDS TO BE CHANGED
-        clifi_dir = env::var("FOO").unwrap_or("none".to_string()); 
+        clifi_dir = env::var("FOO").unwrap(); 
     } else if cfg!(unix){
-        clifi_dir = env::var("HOME").unwrap_or("none".to_string()) + "/.clifi";
+        clifi_dir = env::var("HOME").unwrap() + "/.clifi";
     }
 
+    // IF VLC KILL IS REQUESTED WITH "-k" ARG
     if matches.is_present("kill"){
         match fs::remove_file(&format!("{}/clifi.lck", clifi_dir)) {
             Ok(_) => (),
@@ -46,6 +50,7 @@ fn main() -> std::io::Result<()> {
         };
     }
 
+    // DEFINE VLC PATH ON SYSTEM
     if env::consts::OS == "linux"{
         vlc_path = "/usr/bin/vlc";
     } else if env::consts::OS == "macos"{
@@ -54,15 +59,18 @@ fn main() -> std::io::Result<()> {
         vlc_path = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";
     }
 
+    // READ STREAMFILE
     let json_raw_string = fs::read_to_string(format!("{}/streams.json", clifi_dir)).unwrap();
     let json_data = json::parse(&format!(r#"{}"#, json_raw_string)).unwrap();
 
+    // GET STREAM URL FROM STREAMFILE
     for i in 0..json_data["streams"].len(){
         if json_data["streams"][i]["name"] == stream_name{
             stream_url = json_data["streams"][i]["url"].to_string();
         }
     };
 
+    // VERBOSE PRINTS
     if matches.is_present("verbose"){
         println!("RUNNING_STREAM = {}", stream_name);
         println!("STREAM_URL = {}", stream_url);
@@ -71,10 +79,12 @@ fn main() -> std::io::Result<()> {
         println!("VLC = {}", vlc_path);
     }
 
+    // CHECK FOR LOCKFILE. IF EXISTS, EXIT
     if Path::new(&format!("{}/clifi.lck", clifi_dir)).exists() {
         process::exit(1);
     }
 
+    // RUN STREAM IN HEADLESS VLC
     match Popen::create(&[vlc_path, "-I", "dummy", "-q", "--no-video", &stream_url], PopenConfig {
         stdout: Redirection::Pipe,
         stderr: Redirection::Pipe,
