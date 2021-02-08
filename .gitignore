@@ -1,8 +1,20 @@
-# directories
-dist
-build
-purify
+# Ignore everything
+/*
 
-# files
-*.own
-*.egg-info
+# Unignore the ignore file
+!/.gitignore
+
+# Unignore necessary folders
+!/src
+!/default
+
+# Unignore necessary files
+!/Cargo.lock
+!/Cargo.toml
+
+# Unignore other folders
+
+# Unignore other files
+!/LICENSE
+!/README.md
+!/clifi.png
