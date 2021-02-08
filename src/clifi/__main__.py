@@ -8,14 +8,6 @@
 # which can be found either in the LICENSE file in the root directory of this
 # source code, or if unavailable, can also be found at https://opensource.org/licenses/MIT
 
-# DEPRECATION NOTICE
-print(""":::DeprecationNotice:::
-This version of clifi is deprecated as of June 2020, we recommend you switch to the Rust version located at
-https://github.com/kevinshome/clifi/tree/master. If you insist on using this version, however, please keep
-in mind that it is no longer maintained, and as such, no help will be provided by the development team, and
-no new features will be added.
-""")
-
 # initial python version checker
 from sys import version_info, platform
 
@@ -84,18 +76,21 @@ else:
     else:
         shutil.copy(clifi_dir + '\defaults\clifi.cfg', clifi_dir)
 
-    '''f = open(clifi_dir + 'clifi.cfg', 'w')
-
-    data = "# Configuration file for clifi\n\
-\n\
-streamfile=streams.json\n\
-default_stream=lofi\n"
-
-    f.write(data)
-    f.close()''' # deprecated
-
     cfgdata = config_read()
     streamfile = clifi_dir + cfgdata['streamfile']
+
+### DEPRECATION NOTICE ###
+try:
+    cfgdata['suppress_deprecation_notice']
+except KeyError:
+    print("\
+:::DeprecationNotice:::\n\
+This version of clifi is deprecated as of June 2020, we recommend you switch to the Rust version located at \
+https://github.com/kevinshome/clifi/tree/master. If you insist on using this version, however, please keep \
+in mind that it is no longer maintained, and as such, no help will be provided by the development team, and \
+no new features will be added\n\n\
+To suppress this notice, set 'suppress_deprecation_notice' to any value in your clifi.cfg file\n\
+")
 
         
 
