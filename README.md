@@ -4,7 +4,7 @@
 <br>
 
 <img src="https://img.shields.io/github/license/kevinshome/clifi">
-<img src="https://img.shields.io/maintenance/yes/2020">
+<img src="https://img.shields.io/maintenance/no/2020">
 <img src="https://img.shields.io/github/last-commit/kevinshome/clifi">
 
 </p>

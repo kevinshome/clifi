@@ -8,6 +8,13 @@
 # which can be found either in the LICENSE file in the root directory of this
 # source code, or if unavailable, can also be found at https://opensource.org/licenses/MIT
 
+# DEPRECATION NOTICE
+print(""":::DeprecationNotice:::
+This version of clifi is deprecated as of June 2020, we recommend you switch to the Rust version located at
+https://github.com/kevinshome/clifi/tree/master. If you insist on using this version, however, please keep
+in mind that it is no longer maintained, and as such, no help will be provided by the development team, and
+no new features will be added.
+""")
 
 # initial python version checker
 from sys import version_info, platform
