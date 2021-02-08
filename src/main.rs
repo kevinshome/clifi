@@ -7,15 +7,27 @@ fn main() -> std::io::Result<()> {
     let matches = App::new("clifi")
                           .version("221.1.0")
                           .about("play your favorite streams straight from the command line")
+                          .arg(Arg::with_name("stream")
+                               .help("stream to play")
+                               .required(true)
+                               .default_value("lofi"))
                           .arg(Arg::with_name("kill")
                                .short("k")
                                .long("kill")
                                .help("kill clifi instance")
                                .takes_value(false))
+                          .arg(Arg::with_name("verbose")
+                               .short("v")
+                               .long("verbose")
+                               .help("be verbose")
+                               .takes_value(false))
                           .get_matches();
 
+    let stream_name = matches.value_of("stream").unwrap();                    
     let mut vlc_path = "";
+    let mut stream_url: String = "".to_string();
     let mut clifi_dir: String = "".to_string();
+
 
     if cfg!(win32){ // NEEDS TO BE CHANGED
         clifi_dir = env::var("FOO").unwrap_or("none".to_string()); 
@@ -45,15 +57,25 @@ fn main() -> std::io::Result<()> {
     let json_raw_string = fs::read_to_string(format!("{}/streams.json", clifi_dir)).unwrap();
     let json_data = json::parse(&format!(r#"{}"#, json_raw_string)).unwrap();
 
-    println!("JSON_DATA = {}", json_data["streams"][0]);
-    println!("CLIFI_DIR = {}", clifi_dir);
-    println!("VLC = {}", vlc_path);
+    for i in 0..json_data["streams"].len(){
+        if json_data["streams"][i]["name"] == stream_name{
+            stream_url = json_data["streams"][i]["url"].to_string();
+        }
+    };
+
+    if matches.is_present("verbose"){
+        println!("RUNNING_STREAM = {}", stream_name);
+        println!("STREAM_URL = {}", stream_url);
+        println!("JSON_DATA = {}", json_data["streams"]);
+        println!("CLIFI_DIR = {}", clifi_dir);
+        println!("VLC = {}", vlc_path);
+    }
 
     if Path::new(&format!("{}/clifi.lck", clifi_dir)).exists() {
         process::exit(1);
     }
 
-    match Popen::create(&[vlc_path, "-I", "dummy", "-q", "--no-video", "https://www.youtube.com/watch?v=5qap5aO4i9A"], PopenConfig {
+    match Popen::create(&[vlc_path, "-I", "dummy", "-q", "--no-video", &stream_url], PopenConfig {
         stdout: Redirection::Pipe,
         stderr: Redirection::Pipe,
         detached: true,
