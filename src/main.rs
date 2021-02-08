@@ -1,8 +1,30 @@
 use std::{fs, env, process, path::Path};
 use subprocess::{Popen, PopenConfig, Redirection};
 use clap::{Arg, App};
+use toml::Value;
 
 fn main() -> std::io::Result<()> {
+
+
+    // DEFINE VARIABLES FOR LATER                  
+    let mut vlc_path = "";
+    let mut stream_url: String = "".to_string();
+    let mut clifi_dir: String = "".to_string();
+
+    // DEFINE CLIFI DIRECTORY
+    if cfg!(win32){ // NEEDS TO BE CHANGED
+        clifi_dir = env::var("FOO").unwrap(); 
+    } else if cfg!(unix){
+        clifi_dir = env::var("HOME").unwrap() + "/.clifi";
+    }
+
+    // READ STREAMFILE AND CONFIG FILE
+    let json_raw_string = fs::read_to_string(format!("{}/streams.json", clifi_dir)).unwrap();
+    let config_raw_string = fs::read_to_string(format!("{}/clifi.cfg", clifi_dir)).unwrap();
+
+    let config_data = config_raw_string.parse::<Value>().unwrap();
+    let json_data = json::parse(&format!(r#"{}"#, json_raw_string)).unwrap();
+    let default_stream = &config_data["default_stream"].to_string();
 
     // CLAP DEFINITIONS
     let matches = App::new("clifi")
@@ -11,7 +33,7 @@ fn main() -> std::io::Result<()> {
                           .arg(Arg::with_name("stream")
                                .help("stream to play")
                                .required(true)
-                               .default_value("lofi"))
+                               .default_value(default_stream))
                           .arg(Arg::with_name("kill")
                                .short("k")
                                .long("kill")
@@ -23,20 +45,8 @@ fn main() -> std::io::Result<()> {
                                .help("be verbose")
                                .takes_value(false))
                           .get_matches();
-
-
-    // DEFINE VARIABLES FOR LATER
-    let stream_name = matches.value_of("stream").unwrap();                    
-    let mut vlc_path = "";
-    let mut stream_url: String = "".to_string();
-    let mut clifi_dir: String = "".to_string();
-
-    // DEFINE CLIFI DIRECTORY
-    if cfg!(win32){ // NEEDS TO BE CHANGED
-        clifi_dir = env::var("FOO").unwrap(); 
-    } else if cfg!(unix){
-        clifi_dir = env::var("HOME").unwrap() + "/.clifi";
-    }
+    
+    let stream_name = matches.value_of("stream").unwrap();  
 
     // IF VLC KILL IS REQUESTED WITH "-k" ARG
     if matches.is_present("kill"){
@@ -59,10 +69,6 @@ fn main() -> std::io::Result<()> {
         vlc_path = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";
     }
 
-    // READ STREAMFILE
-    let json_raw_string = fs::read_to_string(format!("{}/streams.json", clifi_dir)).unwrap();
-    let json_data = json::parse(&format!(r#"{}"#, json_raw_string)).unwrap();
-
     // GET STREAM URL FROM STREAMFILE
     for i in 0..json_data["streams"].len(){
         if json_data["streams"][i]["name"] == stream_name{
@@ -74,7 +80,8 @@ fn main() -> std::io::Result<()> {
     if matches.is_present("verbose"){
         println!("RUNNING_STREAM = {}", stream_name);
         println!("STREAM_URL = {}", stream_url);
-        println!("JSON_DATA = {}", json_data["streams"]);
+        //println!("JSON_DATA = {}", json_data["streams"]);
+        println!("CONFIG_DATA = {}", config_data["default_stream"]);
         println!("CLIFI_DIR = {}", clifi_dir);
         println!("VLC = {}", vlc_path);
     }
