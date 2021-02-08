@@ -1,4 +1,4 @@
-use std::{env, process};
+use std::{fs, env, process, path::Path};
 use subprocess::{Popen, PopenConfig, Redirection};
 use clap::{Arg, App};
 
@@ -17,12 +17,21 @@ fn main() -> std::io::Result<()> {
     let mut vlc_path = "";
     let mut clifi_dir: String = "".to_string();
 
+    if cfg!(win32){ // NEEDS TO BE CHANGED
+        clifi_dir = env::var("FOO").unwrap_or("none".to_string()); 
+    } else if cfg!(unix){
+        clifi_dir = env::var("HOME").unwrap_or("none".to_string()) + "/.clifi";
+    }
+
     if matches.is_present("kill"){
-        process::Command::new("killall")
-            .args(&["VLC"])
-            .output()
-            .expect("error while attempting to kill VLC instances. if error persists, try manually.");
-        process::exit(0);
+        match fs::remove_file(&format!("{}/clifi.lck", clifi_dir)) {
+            Ok(_) => (),
+            Err(error) => panic!("error while attempting to delete lockfile. if error persists, try manually. (~/.clifi/clifi.lck)\n{}", error),
+        };
+        match Popen::create(&["killall", "VLC"], PopenConfig::default()) {
+            Ok(_) => process::exit(0),
+            Err(error) => panic!("error while attempting to kill VLC instances. if error persists, try manually.\n{}", error),
+        };
     }
 
     if env::consts::OS == "linux"{
@@ -33,14 +42,16 @@ fn main() -> std::io::Result<()> {
         vlc_path = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";
     }
 
-    if cfg!(win32){ // NEEDS TO BE CHANGED
-        clifi_dir = env::var("FOO").unwrap_or("none".to_string()); 
-    } else if cfg!(unix){
-        clifi_dir = env::var("HOME").unwrap_or("none".to_string()) + "/.clifi/";
-    }
+    let json_raw_string = fs::read_to_string(format!("{}/streams.json", clifi_dir)).unwrap();
+    let json_data = json::parse(&format!(r#"{}"#, json_raw_string)).unwrap();
 
+    println!("JSON_DATA = {}", json_data["streams"][0]);
     println!("CLIFI_DIR = {}", clifi_dir);
     println!("VLC = {}", vlc_path);
+
+    if Path::new(&format!("{}/clifi.lck", clifi_dir)).exists() {
+        process::exit(1);
+    }
 
     match Popen::create(&[vlc_path, "-I", "dummy", "-q", "--no-video", "https://www.youtube.com/watch?v=5qap5aO4i9A"], PopenConfig {
         stdout: Redirection::Pipe,
@@ -48,7 +59,7 @@ fn main() -> std::io::Result<()> {
         detached: true,
         ..Default::default()
     }) {
-        Ok(_) => (),
+        Ok(_) => fs::File::create(&format!("{}/clifi.lck", clifi_dir))?,
         Err(error) => panic!("error opening stream: {:?}", error),
     };
 
