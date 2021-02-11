@@ -6,7 +6,6 @@ use toml::Value;
 fn main() -> std::io::Result<()> {
     // DEFINE VARIABLES FOR LATER                  
     let mut vlc_path = "";
-    let mut stream_url: String = "".to_string();
     let mut clifi_dir: String = "".to_string();
 
     // DEFINE CLIFI DIRECTORY
@@ -17,13 +16,10 @@ fn main() -> std::io::Result<()> {
         clifi_dir = env::var("HOME").unwrap() + "/.clifi";
     }
 
-    // READ STREAMFILE AND CONFIG FILE
-    let json_raw_string = fs::read_to_string(format!("{}/streams.json", clifi_dir)).unwrap();
+    // READ CONFIG FILE AND SET DEFAULT STREAM
     let config_raw_string = fs::read_to_string(format!("{}/clifi.cfg", clifi_dir)).unwrap();
-
     let config_data = config_raw_string.parse::<Value>().unwrap();
-    let json_data = json::parse(&format!(r#"{}"#, json_raw_string)).unwrap();
-    let default_stream = &config_data["default_stream"].to_string();
+    let default_stream = &config_data["config"]["default_stream"].to_string();
 
     // CLAP DEFINITIONS
     let matches = App::new("clifi")
@@ -50,7 +46,6 @@ fn main() -> std::io::Result<()> {
                 .takes_value(false),
         )
         .get_matches();
-    let stream_name = matches.value_of("stream").unwrap();
 
     // IF VLC KILL IS REQUESTED WITH "-k" ARG
     if matches.is_present("kill") {
@@ -72,20 +67,17 @@ fn main() -> std::io::Result<()> {
     } else if env::consts::OS == "windows" {
         vlc_path = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";
     }
-
-    // GET STREAM URL FROM STREAMFILE
-    for i in 0..json_data["streams"].len() {
-        if json_data["streams"][i]["name"] == stream_name {
-            stream_url = json_data["streams"][i]["url"].to_string();
-        }
-    }
+    
+    // STREAM NAME AND STREAM URL
+    let stream_name = &format!("{}", matches.value_of("stream").unwrap()).replace('\"', "");
+    let stream_url = config_data["streams"][stream_name]["url"].to_string().replace('\"', "");
 
     // VERBOSE PRINTS
     if matches.is_present("verbose") {
         println!("RUNNING_STREAM = {}", stream_name);
         println!("STREAM_URL = {}", stream_url);
         //println!("JSON_DATA = {}", json_data["streams"]);
-        println!("CONFIG_DATA = {}", config_data["default_stream"]);
+        println!("CONFIG_DATA = {}", config_data["config"]["default_stream"]);
         println!("CLIFI_DIR = {}", clifi_dir);
         println!("VLC = {}", vlc_path);
     }
@@ -97,7 +89,7 @@ fn main() -> std::io::Result<()> {
 
     // RUN STREAM IN HEADLESS VLC
     match Popen::create(
-        &[vlc_path, "-I", "dummy", "-q", "--no-video", &stream_url], 
+        &[vlc_path, "-I", "dummy", "-q", "--no-video", &stream_url],
         PopenConfig {
             stdout: Redirection::Pipe,
             stderr: Redirection::Pipe,
@@ -108,8 +100,6 @@ fn main() -> std::io::Result<()> {
         Ok(_) => fs::File::create(&format!("{}/clifi.lck", clifi_dir))?,
         Err(error) => panic!("error opening stream: {:?}", error),
     };
-
-
 
     Ok(())
 }
