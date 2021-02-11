@@ -9,5 +9,4 @@ edition = "2018"
 [dependencies]
 subprocess = "0.2.6"
 clap = "2.33.3"
-json = "0.12.4"
 toml = "0.5.8"
