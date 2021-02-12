@@ -6,7 +6,7 @@
 <img src="https://img.shields.io/github/license/kevinshome/clifi">
 <img src="https://img.shields.io/maintenance/yes/2021">
 <img src="https://img.shields.io/github/last-commit/kevinshome/clifi">
-<img src="https://api.travis-ci.com/kevinshome/clifi.svg?branch=rustrw">
+<a href="https://travis-ci.com/github/kevinshome/clifi"><img src="https://api.travis-ci.com/kevinshome/clifi.svg?branch=rustrw"></a>
 
 </p>
 
