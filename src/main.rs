@@ -2,6 +2,7 @@ use clap::{App, Arg};
 use std::{env, fs, path::Path, process};
 use subprocess::{Popen, PopenConfig, Redirection};
 use toml::Value;
+use toml_edit::{value, Document};
 
 fn main() -> std::io::Result<()> {
     // DEFINE VARIABLES FOR LATER
@@ -44,7 +45,10 @@ fn main() -> std::io::Result<()> {
     }
 
     // READ CONFIG FILE AND SET DEFAULT STREAM
-    let config_raw_string = fs::read_to_string(format!("{}/clifi.cfg", clifi_dir)).unwrap();
+    let config_raw_string = format!(
+        r#"{}"#,
+        fs::read_to_string(format!("{}/clifi.cfg", clifi_dir)).unwrap()
+    );
     let config_data = config_raw_string.parse::<Value>().unwrap();
     let default_stream = &config_data["config"]["default_stream"].to_string();
 
@@ -66,6 +70,25 @@ fn main() -> std::io::Result<()> {
                 .takes_value(false),
         )
         .arg(
+            Arg::with_name("add-stream")
+                .long("add-stream")
+                .help("add a new stream to config file")
+                .takes_value(false),
+        )
+        .arg(
+            Arg::with_name("rm-stream")
+                .long("rm-stream")
+                .help("remove a stream from config file")
+                .takes_value(false),
+        )
+        .arg(
+            Arg::with_name("list-streams")
+                .short("l")
+                .long("list-streams")
+                .help("return a list of all available streams in config file")
+                .takes_value(false),
+        )
+        .arg(
             Arg::with_name("verbose")
                 .short("v")
                 .long("verbose")
@@ -73,6 +96,31 @@ fn main() -> std::io::Result<()> {
                 .takes_value(false),
         )
         .get_matches();
+
+    if matches.is_present("add-stream") {
+        let mut stream_name = String::new();
+        let mut stream_full_name = String::new();
+        let mut stream_url = String::new();
+
+        println!("Short name for stream (this is the name you\'ll use to launch the stream):");
+        std::io::stdin().read_line(&mut stream_name).unwrap();
+        println!("Full name of stream (not required, will only be used when the '--list-streams' argument is called): ");
+        std::io::stdin().read_line(&mut stream_full_name).unwrap();
+        println!("Stream URL: ");
+        std::io::stdin().read_line(&mut stream_url).unwrap();
+
+        let mut doc = config_raw_string.parse::<Document>().expect("invalid doc");
+        doc["streams"][&stream_name.trim()]["url"] = value(stream_url.trim());
+        doc["streams"][&stream_name.trim()]["full-name"] = value(stream_full_name.trim());
+        let _nil = fs::write(format!("{}/clifi.cfg", clifi_dir), doc.to_string());
+        process::exit(0);
+    }
+    if matches.is_present("rm-stream") {
+        process::exit(0);
+    }
+    if matches.is_present("list-streams") {
+        process::exit(0);
+    }
 
     // IF VLC KILL IS REQUESTED WITH "-k" ARG
     if matches.is_present("kill") {
