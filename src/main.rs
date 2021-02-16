@@ -93,7 +93,7 @@ fn main() -> std::io::Result<()> {
         vlc_path = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";
     }
 
-    let _init = init_checks(vlc_path, &clifi_dir);
+    let _init = init_checks(&vlc_path, &clifi_dir);
 
     // READ CONFIG FILE TO MUTABLE AND IMMUTABLE VARS
     let config_raw_string = format!(
@@ -109,7 +109,6 @@ fn main() -> std::io::Result<()> {
 
     // CLAP DEFINITIONS
     let matches = App::new("clifi")
-        .version("221.1.0")
         .about("play your favorite streams straight from the command line")
         .arg(
             Arg::with_name("stream")
@@ -128,13 +127,15 @@ fn main() -> std::io::Result<()> {
             Arg::with_name("add-stream")
                 .long("add-stream")
                 .help("add a new stream to config file")
-                .takes_value(false),
+                .takes_value(true)
+                .value_name("NAME"),
         )
         .arg(
             Arg::with_name("rm-stream")
                 .long("rm-stream")
                 .help("remove a stream from config file")
-                .takes_value(true),
+                .takes_value(true)
+                .value_name("NAME"),
         )
         .arg(
             Arg::with_name("list-streams")
@@ -154,20 +155,28 @@ fn main() -> std::io::Result<()> {
 
     // STREAMS MANIPULATION
     if matches.is_present("add-stream") {
-        let mut stream_name = String::new();
+        let stream_name = matches.value_of("add-stream").unwrap();
         let mut stream_full_name = String::new();
         let mut stream_url = String::new();
 
-        println!("Short name for stream (this is the name you\'ll use to launch the stream):");
-        std::io::stdin().read_line(&mut stream_name).unwrap();
-        println!("Full name of stream (not required, will only be used when the '--list-streams' argument is called): ");
+        println!("Full name of stream (not required, but recommended): ");
         std::io::stdin().read_line(&mut stream_full_name).unwrap();
         println!("Stream URL: ");
         std::io::stdin().read_line(&mut stream_url).unwrap();
 
         config_data["streams"][&stream_name.trim()]["url"] = value(stream_url.trim());
-        config_data["streams"][&stream_name.trim()]["full-name"] = value(stream_full_name.trim());
-        let _nil = fs::write(format!("{}/clifi.cfg", clifi_dir), config_data.to_string());
+
+        if stream_full_name.trim() == "" {
+            config_data["streams"][&stream_name.trim()]["full_name"] = value("null");
+        } else {
+            config_data["streams"][&stream_name.trim()]["full_name"] =
+                value(stream_full_name.trim());
+        }
+
+        let _nil = fs::write(
+            format!("{}/clifi.cfg", &clifi_dir),
+            &config_data.to_string(),
+        );
         process::exit(0);
     }
     if matches.is_present("rm-stream") {
@@ -175,49 +184,65 @@ fn main() -> std::io::Result<()> {
             .as_table_mut()
             .unwrap()
             .remove(matches.value_of("rm-stream").unwrap());
-        let _nil = fs::write(format!("{}/clifi.cfg", clifi_dir), config_data.to_string());
+        let _nil = fs::write(
+            format!("{}/clifi.cfg", &clifi_dir),
+            &config_data.to_string(),
+        );
         process::exit(0);
     }
     if matches.is_present("list-streams") {
+        let _table_like = config_data["streams"].as_table().unwrap();
+        for item in _table_like.iter() {
+            println!(
+                "{} ({})",
+                item.1.as_inline_table()
+                    .unwrap()
+                    .get("full_name")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .replace("\"", ""),
+                item.0
+            );
+        }
         process::exit(0);
     }
 
     // IF VLC KILL IS REQUESTED WITH "-k" ARG
     if matches.is_present("kill") {
-        match fs::remove_file(&format!("{}/clifi.lck", clifi_dir)) {
+        match fs::remove_file(&format!("{}/clifi.lck", &clifi_dir)) {
             Ok(_) => (),
             Err(error) => {
                 println!("{}\n[ {} ]", "error while attempting to delete lockfile.\nif error persists, try manually. ($ rm ~/.clifi/clifi.lck)".bright_red(), format!("{}", error).red());
                 process::exit(1);
-            },
+            }
         };
         match Popen::create(&["killall", "VLC"], PopenConfig::default()) {
             Ok(_) => process::exit(0),
             Err(error) => {
                 println!("{}\n[ {} ]", "error while attempting to kill VLC instances. if error persists, try manually. ($ killall VLC)".bright_red(), format!("{}", error).red());
                 process::exit(1);
-            },
+            }
         };
     }
 
     // STREAM NAME AND STREAM URL
     let stream_name = &format!("{}", matches.value_of("stream").unwrap()).replace('\"', "");
-    let stream_url = match config_data["streams"][stream_name]["url"].as_str(){
+    let stream_url = match config_data["streams"][&stream_name]["url"].as_str() {
         Some(value) => value.replace('\"', ""),
         None => {
             println!("stream '{}' not found", matches.value_of("stream").unwrap());
             process::exit(1);
         }
     };
-        
 
-    let stream_name_full = config_data["streams"][stream_name]["full_name"]
+    let stream_name_full = config_data["streams"][&stream_name]["full_name"]
         .as_str()
         .unwrap()
-        .replace('\"', "");
+        .replace("\"", "");
 
     // CHECK FOR LOCKFILE. IF EXISTS, EXIT
-    if Path::new(&format!("{}/clifi.lck", clifi_dir)).exists() {
+    if Path::new(&format!("{}/clifi.lck", &clifi_dir)).exists() {
         process::exit(1);
     }
 
@@ -232,9 +257,9 @@ fn main() -> std::io::Result<()> {
         },
     ) {
         Ok(_) => {
-            fs::File::create(&format!("{}/clifi.lck", clifi_dir))?;
-            println!("Running stream {} ({})", stream_name, stream_name_full);
-        },
+            fs::File::create(&format!("{}/clifi.lck", &clifi_dir))?;
+            println!("Running stream: {} ({})", &stream_name_full, &stream_name);
+        }
         Err(error) => panic!("error opening stream: {:?}", error),
     };
 
