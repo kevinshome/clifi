@@ -202,10 +202,15 @@ fn main() -> std::io::Result<()> {
 
     // STREAM NAME AND STREAM URL
     let stream_name = &format!("{}", matches.value_of("stream").unwrap()).replace('\"', "");
-    let stream_url = config_data["streams"][stream_name]["url"]
-        .as_str()
-        .unwrap()
-        .replace('\"', "");
+    let stream_url = match config_data["streams"][stream_name]["url"].as_str(){
+        Some(value) => value.replace('\"', ""),
+        None => {
+            println!("stream '{}' not found", matches.value_of("stream").unwrap());
+            process::exit(1);
+        }
+    };
+        
+
     let stream_name_full = config_data["streams"][stream_name]["full_name"]
         .as_str()
         .unwrap()
