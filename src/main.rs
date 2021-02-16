@@ -4,6 +4,27 @@ use std::{env, fs, panic, path::Path, process};
 use subprocess::{Popen, PopenConfig, Redirection};
 use toml_edit::{value, Document};
 
+fn clifi_kill(clifi_dir: &str, switch: bool){
+    match fs::remove_file(&format!("{}/clifi.lck", &clifi_dir)) {
+        Ok(_) => (),
+        Err(error) => {
+            println!("{}\n[ {} ]", "error while attempting to delete lockfile.\nif error persists, try manually. ($ rm ~/.clifi/clifi.lck)".bright_red(), format!("{}", error).red());
+            process::exit(1);
+        }
+    };
+    match Popen::create(&["killall", "VLC"], PopenConfig::default()) {
+        Ok(_) => {
+            if !switch{
+                process::exit(0)
+            }
+        },
+        Err(error) => {
+            println!("{}\n[ {} ]", "error while attempting to kill VLC instances. if error persists, try manually. ($ killall VLC)".bright_red(), format!("{}", error).red());
+            process::exit(1);
+        }
+    };
+}
+
 fn check_for_default(data: &toml_edit::Document) {
     /*
     check for default stream in config file
@@ -151,6 +172,14 @@ fn main() -> std::io::Result<()> {
                 .help("be verbose")
                 .takes_value(false),
         )
+        .arg(
+            Arg::with_name("switch")
+                .short("s")
+                .long("switch")
+                .help("switch to another stream")
+                .takes_value(true)
+                .value_name(""),
+        )
         .get_matches();
 
     // STREAMS MANIPULATION
@@ -210,24 +239,20 @@ fn main() -> std::io::Result<()> {
 
     // IF VLC KILL IS REQUESTED WITH "-k" ARG
     if matches.is_present("kill") {
-        match fs::remove_file(&format!("{}/clifi.lck", &clifi_dir)) {
-            Ok(_) => (),
-            Err(error) => {
-                println!("{}\n[ {} ]", "error while attempting to delete lockfile.\nif error persists, try manually. ($ rm ~/.clifi/clifi.lck)".bright_red(), format!("{}", error).red());
-                process::exit(1);
-            }
-        };
-        match Popen::create(&["killall", "VLC"], PopenConfig::default()) {
-            Ok(_) => process::exit(0),
-            Err(error) => {
-                println!("{}\n[ {} ]", "error while attempting to kill VLC instances. if error persists, try manually. ($ killall VLC)".bright_red(), format!("{}", error).red());
-                process::exit(1);
-            }
-        };
+        clifi_kill(&clifi_dir, false);
     }
 
     // STREAM NAME AND STREAM URL
-    let stream_name = &format!("{}", matches.value_of("stream").unwrap()).replace('\"', "");
+    let stream_name: String;
+
+    if matches.is_present("switch"){
+        clifi_kill(&clifi_dir, true);
+        stream_name = format!("{}", matches.value_of("switch").unwrap()).replace('\"', "");
+        println!("Switching to: {}", stream_name);
+    } else {
+        stream_name = format!("{}", matches.value_of("stream").unwrap()).replace('\"', "");
+    }
+
     let stream_url = match config_data["streams"][&stream_name]["url"].as_str() {
         Some(value) => value.replace('\"', ""),
         None => {
@@ -249,6 +274,7 @@ fn main() -> std::io::Result<()> {
     // RUN STREAM IN HEADLESS VLC
     match Popen::create(
         &[vlc_path, "-I", "dummy", "-q", "--no-video", &stream_url],
+        //&[vlc_path, "-vvv", &stream_url], //for diagnostics
         PopenConfig {
             stdout: Redirection::Pipe,
             stderr: Redirection::Pipe,
