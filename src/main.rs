@@ -130,10 +130,11 @@ fn main() -> std::io::Result<()> {
 
     // CLAP DEFINITIONS
     let matches = App::new("clifi")
+        .version("0.1")
         .about("play your favorite streams straight from the command line")
         .arg(
             Arg::with_name("stream")
-                .help("stream to play")
+                .help("Stream to play")
                 .required(true)
                 .default_value(default_stream),
         )
@@ -141,46 +142,76 @@ fn main() -> std::io::Result<()> {
             Arg::with_name("kill")
                 .short("k")
                 .long("kill")
-                .help("kill clifi instance")
+                .help("Kill clifi instance")
                 .takes_value(false),
         )
         .arg(
             Arg::with_name("add-stream")
+                .short("a")
                 .long("add-stream")
-                .help("add a new stream to config file")
+                .help("Add a new stream to config file")
                 .takes_value(true)
-                .value_name("NAME"),
+                .value_name("STREAM_NAME"),
         )
         .arg(
             Arg::with_name("rm-stream")
+                .short("r")
                 .long("rm-stream")
-                .help("remove a stream from config file")
+                .help("Remove a stream from config file")
                 .takes_value(true)
-                .value_name("NAME"),
+                .value_name("STREAM_NAME"),
         )
         .arg(
             Arg::with_name("list-streams")
                 .short("l")
                 .long("list-streams")
-                .help("return a list of all available streams in config file")
+                .help("Return a list of all available streams")
                 .takes_value(false),
         )
         .arg(
             Arg::with_name("verbose")
                 .short("v")
                 .long("verbose")
-                .help("be verbose")
+                .help("Be verbose")
                 .takes_value(false),
         )
         .arg(
             Arg::with_name("switch")
                 .short("s")
                 .long("switch")
-                .help("switch to another stream")
+                .help("Switch to another stream")
                 .takes_value(true)
-                .value_name(""),
+                .value_name("STREAM_NAME"),
+        )
+        .arg(
+            Arg::with_name("url")
+                .short("U")
+                .long("url")
+                .help("Stream directly from url")
+                .takes_value(true)
+                .value_name("URL"),
         )
         .get_matches();
+    
+    if matches.is_present("url"){
+        match Popen::create(
+            &[vlc_path, "-I", "dummy", "-q", "--no-video", matches.value_of("url").unwrap()],
+            //&[vlc_path, "-vvv", &stream_url], //for diagnostics
+            PopenConfig {
+                stdout: Redirection::Pipe,
+                stderr: Redirection::Pipe,
+                detached: true,
+                ..Default::default()
+            },
+        ) {
+            Ok(_) => {
+                fs::File::create(&format!("{}/clifi.lck", &clifi_dir))?;
+                println!("Running stream from: {}", matches.value_of("url").unwrap());
+            }
+            Err(error) => panic!("error opening stream: {:?}", error),
+        };
+        process::exit(0);
+    }
 
     // STREAMS MANIPULATION
     if matches.is_present("add-stream") {
