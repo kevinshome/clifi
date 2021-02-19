@@ -5,6 +5,16 @@ use subprocess::{Popen, PopenConfig, Redirection};
 use toml_edit::{value, Document};
 
 fn clifi_kill(clifi_dir: &str, switch: bool){
+    let mut vlc_cmd: &str = "";
+
+    if env::consts::OS == "linux" {
+        vlc_cmd = "vlc";
+    } else if env::consts::OS == "macos" {
+        vlc_cmd = "VLC";
+    } else if env::consts::OS == "windows" {
+        vlc_cmd = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";
+    }
+
     match fs::remove_file(&format!("{}/clifi.lck", &clifi_dir)) {
         Ok(_) => (),
         Err(error) => {
@@ -12,7 +22,7 @@ fn clifi_kill(clifi_dir: &str, switch: bool){
             process::exit(1);
         }
     };
-    match Popen::create(&["killall", "VLC"], PopenConfig::default()) {
+    match Popen::create(&["killall", vlc_cmd], PopenConfig::default()) {
         Ok(_) => {
             if !switch{
                 process::exit(0)
@@ -48,13 +58,15 @@ fn check_for_default(data: &toml_edit::Document) {
     }
 }
 
-fn init_checks(vlc_path: &str, clifi_dir: &str) -> std::io::Result<()> {
+fn init_checks<'a>(vlc_path: &'a str, clifi_dir: &str) -> std::io::Result<&'a str> {
     /*
     necessary pre-run checks and catches
     */
 
+    let ret_path: &str;
+
     // CHECK FOR VLC
-    if !Path::new(&format!("{}", vlc_path)).exists() {
+    if !Path::new(&format!("{}", vlc_path)).exists() && env::consts::OS != "linux" {
         println!(
             "{}{}\n{}\n{}",
             "ERROR: ".bold().bright_red(),
@@ -63,6 +75,21 @@ fn init_checks(vlc_path: &str, clifi_dir: &str) -> std::io::Result<()> {
             "It can be found at https://www.videolan.org/vlc/".bright_red()
         );
         process::exit(1);
+    } else if !Path::new(&format!("{}", vlc_path)).exists() && env::consts::OS == "linux" {
+        if !Path::new(&format!("/snap/bin/vlc")).exists(){
+            println!(
+                "{}{}\n{}\n{}",
+                "ERROR: ".bold().bright_red(),
+                "VLC not found on your system".bright_red(),
+                "clifi requires VLC to run".bright_red(),
+                "It can be found at https://www.videolan.org/vlc/".bright_red()
+            );
+            process::exit(1);
+        } else {
+            ret_path = "/snap/bin/vlc";
+        }
+    } else{
+        ret_path = &vlc_path;
     }
 
     //CHECK FOR CLIFI DIRECTORY
@@ -85,7 +112,7 @@ fn init_checks(vlc_path: &str, clifi_dir: &str) -> std::io::Result<()> {
         )?;
     }
 
-    Ok(())
+    Ok(ret_path)
 }
 
 fn main() -> std::io::Result<()> {
@@ -114,7 +141,7 @@ fn main() -> std::io::Result<()> {
         vlc_path = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";
     }
 
-    let _init = init_checks(&vlc_path, &clifi_dir);
+    vlc_path = init_checks(&vlc_path, &clifi_dir).unwrap();
 
     // READ CONFIG FILE TO MUTABLE AND IMMUTABLE VARS
     let config_raw_string = format!(
