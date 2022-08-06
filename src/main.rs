@@ -5,31 +5,33 @@ use subprocess::{Popen, PopenConfig, Redirection};
 use toml_edit::{value, Document};
 
 fn clifi_kill(clifi_dir: &str, switch: bool){
-    let mut vlc_cmd: &str = "";
-
-    if env::consts::OS == "linux" {
-        vlc_cmd = "vlc";
-    } else if env::consts::OS == "macos" {
-        vlc_cmd = "VLC";
-    } else if env::consts::OS == "windows" {
-        vlc_cmd = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe";
+    let mut kill_cmd: Vec<&str> = vec!["kill", "-15"];
+    let taskpid: String;
+    if env::consts::OS == "windows" {
+        kill_cmd = vec!["taskkill", "/f", "/pid"];
     }
 
-    match fs::remove_file(&format!("{}/clifi.lck", &clifi_dir)) {
-        Ok(_) => (),
+    match fs::read_to_string(&format!("{}/clifi.lck", &clifi_dir)) {
+        Ok(pid) => (taskpid = pid),
         Err(error) => {
             println!("{}\n[ {} ]", "error while attempting to delete lockfile.\nif error persists, try manually. ($ rm ~/.clifi/clifi.lck)".bright_red(), format!("{}", error).red());
             process::exit(1);
         }
     };
-    match Popen::create(&["killall", vlc_cmd], PopenConfig::default()) {
+    kill_cmd.push(&taskpid);
+    match Popen::create(&kill_cmd, PopenConfig {
+        stdout: Redirection::Pipe,
+        stderr: Redirection::Pipe,
+        ..Default::default()
+    }) {
         Ok(_) => {
+            fs::remove_file(&format!("{}/clifi.lck", &clifi_dir)).expect("Failed to delete clifi.lck...");
             if !switch{
-                process::exit(0)
+                process::exit(0);
             }
         },
         Err(error) => {
-            println!("{}\n[ {} ]", "error while attempting to kill VLC instances. if error persists, try manually. ($ killall VLC)".bright_red(), format!("{}", error).red());
+            println!("[ {} ($ {:?}) ]\n{}", "error while attempting to kill VLC instances. if error persists, try manually.".bright_red(), kill_cmd, format!("{}", error).red());
             process::exit(1);
         }
     };
@@ -122,15 +124,17 @@ fn main() -> std::io::Result<()> {
 
     // DEFINE VARIABLES FOR LATER
     let mut vlc_path = "";
-    let mut clifi_dir: String = "".to_string();
+    let clifi_dir: String = env::var("HOME").unwrap() + "/.clifi";
 
     // DEFINE CLIFI DIRECTORY
+    /*
     if cfg!(win32) {
         // NEEDS TO BE CHANGED
         clifi_dir = env::var("FOO").unwrap();
     } else if cfg!(unix) {
         clifi_dir = env::var("HOME").unwrap() + "/.clifi";
     }
+    */
 
     // DEFINE VLC PATH ON SYSTEM
     if env::consts::OS == "linux" {
@@ -231,8 +235,9 @@ fn main() -> std::io::Result<()> {
                 ..Default::default()
             },
         ) {
-            Ok(_) => {
+            Ok(popen) => {
                 fs::File::create(&format!("{}/clifi.lck", &clifi_dir))?;
+                fs::write(&format!("{}/clifi.lck", &clifi_dir), format!("{}", popen.pid().unwrap()))?;
                 println!("Running stream from: {}", matches.value_of("url").unwrap());
             }
             Err(error) => panic!("error opening stream: {:?}", error),
@@ -340,8 +345,9 @@ fn main() -> std::io::Result<()> {
             ..Default::default()
         },
     ) {
-        Ok(_) => {
+        Ok(popen) => {
             fs::File::create(&format!("{}/clifi.lck", &clifi_dir))?;
+            fs::write(&format!("{}/clifi.lck", &clifi_dir), format!("{}", popen.pid().unwrap()))?;
             println!("Running stream: {} ({})", &stream_name_full, &stream_name);
         }
         Err(error) => panic!("error opening stream: {:?}", error),
